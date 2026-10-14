@@ -60,6 +60,8 @@ Owner (khusus owner):
 ## Pasang
 
 ```
+git clone https://github.com/RizkyXLoli/Script-bot-Telegram-vps
+cd Script-bot-Telegram-vps
 npm install
 cp .env.example .env
 bash setup.sh
@@ -67,24 +69,3 @@ bash setup.sh
 
 Isi BOT_TOKEN (dari @BotFather), tambah owner via menu 4 (kirim /id ke bot untuk dapat ID).
 Pairing WA: kode 8 digit muncul di log, ketik di HP > Perangkat Tertaut.
-
-## Opsional (downloader)
-
-```
-sudo apt install ffmpeg poppler-utils
-sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-sudo chmod +x /usr/local/bin/yt-dlp
-```
-
-Tanpa ini, /dl dan /mp3 balas panduan install.
-
-## Struktur
-
-```
-core/wa.js  core/tg.js      koneksi platform
-commands/ai.js  dl.js  anime.js  tools.js  fun.js  promo.js  auto.js
-services/ai.js  downloader.js  fileanalyzer.js
-db/store.js     index.js  setup.sh  .env.example
-```
-
-`db/wa-session/`, `db/*.sqlite3`, `.env`, `node_modules/` masuk `.gitignore`.
