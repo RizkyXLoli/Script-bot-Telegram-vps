@@ -116,6 +116,21 @@ async function startTG(onMessage, onFile) {
       const res = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`);
       fs.writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
       const caption = ctx.message.caption || "";
+      const sendStickerTg = async (fp) => {
+        await ctx.replyWithSticker(new (require("grammy").InputFile)(fp));
+      };
+      if (/^\/(stiker|sticker|smeme)(\s|$)/i.test(caption.trim())) {
+        try {
+          await require("../commands/stiker").handle({
+            userId, platform: "tg", text: caption.trim(), isGroup: false, senderName, senderUser,
+            filePath: tmp, fileName: "foto.jpg",
+            reply: (t) => ctx.reply(String(t).slice(0, 4000)),
+            replyFile: async () => {}, sendSticker: sendStickerTg,
+          });
+        } catch (e) { log.error("stiker TG: " + e.message); }
+        try { fs.unlinkSync(tmp); } catch {}
+        return;
+      }
       const sendFile = async (fp, cap) => {
         if (fp.endsWith(".mp3")) await ctx.replyWithAudio(new (require("grammy").InputFile)(fp), { caption: cap || "" });
         else await ctx.replyWithVideo(new (require("grammy").InputFile)(fp), { caption: (cap || "").slice(0, 1000) });

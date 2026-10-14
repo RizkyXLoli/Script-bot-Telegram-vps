@@ -117,6 +117,7 @@ async function startWA(onMessage, onFile, opts) {
           userId, platform: "wa", text, isGroup, senderName, senderUser: senderName.toLowerCase().replace(/\s+/g, ""),
           chatId: jid,
           reply: replyFor(jid, sender, senderName, m.key), replyFile: replyFileFor(jid),
+          sendSticker: async (fp) => { await sock.sendMessage(jid, { sticker: { url: fp } }); },
           kickUser: async () => { await sock.groupParticipantsUpdate(jid, [sender], "remove"); },
           sendAlbum: async (items) => {
             for (const it of items) {
@@ -136,6 +137,12 @@ async function startWA(onMessage, onFile, opts) {
           const name = media.fileName || (msg.videoMessage ? "video.mp4" : msg.imageMessage ? "foto.jpg" : "file");
           const tmp = path.join(os.tmpdir(), "wa-tg-" + Date.now() + "-" + String(name).replace(/[^a-zA-Z0-9._-]/g, "_"));
           fs.writeFileSync(tmp, buf);
+          if (/^\/(stiker|sticker|smeme)(\s|$)/i.test(text.trim())) {
+            try { await require("../commands/stiker").handle({ ...ctx, filePath: tmp, fileName: name }); }
+            catch (e) { log.error("stiker WA: " + e.message); }
+            try { fs.unlinkSync(tmp); } catch {}
+            continue;
+          }
           await onFile({ ...ctx, filePath: tmp, name });
           try { fs.unlinkSync(tmp); } catch {}
           if (text.trim() && !text.startsWith("/")) {

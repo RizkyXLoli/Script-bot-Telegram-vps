@@ -108,6 +108,8 @@ async function onMessage(ctx) {
   if (r !== null && r !== undefined) return;
   r = await wpCmd.handle({ ...ctx, text });
   if (r !== null && r !== undefined) return;
+  r = await require("./commands/stiker").handle({ ...ctx, text });
+  if (r !== null && r !== undefined) return;
 
   const user = store.getUser(userId, platform);
   if (user.setup_step && user.setup_step !== "idle") {
@@ -233,6 +235,7 @@ Fun:
 19. /ramal /tebak /jawab /nama Budi
 20. /anime [jumlah] — rilisan ongoing terbaru Samehadaku (gambar+judul+link)
 21. /wallpaper [jumlah 1-5] — wallpaper anime random (tiap request beda, alias: /wp)
+22. kirim gambar + caption /stiker [atas | bawah] — jadi sticker + teks meme
 
 Khusus owner:
 /owner — menu owner`;
