@@ -44,6 +44,16 @@ function open() {
       key TEXT PRIMARY KEY,
       value INTEGER DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS schedules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform TEXT NOT NULL,
+      chat_id TEXT NOT NULL,
+      interval_min INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      next_run INTEGER NOT NULL,
+      created_by TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
   return db;
 }
@@ -150,4 +160,65 @@ function sweepExpired() {
   return rows.length;
 }
 
-module.exports = { getUser, setUser, tmpGet, tmpSet, pushHistory, getHistory, clearHistory, setPending, getPending, clearPending, clearPendingExcept, sweepExpired, bumpStat, getStats };
+function addSchedule(platform, chatId, intervalMin, text, createdBy) {
+  const next = Date.now() + intervalMin * 60000;
+  const r = open().prepare(
+    "INSERT INTO schedules (platform, chat_id, interval_min, text, next_run, created_by) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(platform, chatId, intervalMin, text, next, createdBy || null);
+  return { id: r.lastInsertRowid, nextRun: next };
+}
+function listSchedules() {
+  return open().prepare("SELECT * FROM schedules ORDER BY id ASC").all();
+}
+function deleteSchedule(id) {
+  return open().prepare("DELETE FROM schedules WHERE id = ?").run(id).changes;
+}
+function clearSchedules() {
+  return open().prepare("DELETE FROM schedules").run().changes;
+}
+function dueSchedules(now) {
+  return open().prepare("SELECT * FROM schedules WHERE next_run <= ?").all(now || Date.now());
+}
+function bumpSchedule(id, intervalMin) {
+  open().prepare("UPDATE schedules SET next_run = ? WHERE id = ?").run(Date.now() + intervalMin * 60000, id);
+}
+function autoSetup() {
+  open().exec(`CREATE TABLE IF NOT EXISTS auto_chats (
+    platform TEXT NOT NULL, chat_id TEXT NOT NULL,
+    sholat INTEGER DEFAULT 0, libur INTEGER DEFAULT 0, zona TEXT DEFAULT 'wib',
+    last_sent TEXT DEFAULT '', libur_date TEXT DEFAULT '',
+    PRIMARY KEY (platform, chat_id)
+  );`);
+}
+function getAuto(platform, chatId) {
+  autoSetup();
+  let r = open().prepare("SELECT * FROM auto_chats WHERE platform = ? AND chat_id = ?").get(platform, chatId);
+  if (!r) {
+    open().prepare("INSERT INTO auto_chats (platform, chat_id) VALUES (?, ?)").run(platform, chatId);
+    r = open().prepare("SELECT * FROM auto_chats WHERE platform = ? AND chat_id = ?").get(platform, chatId);
+  }
+  return r;
+}
+function setAuto(platform, chatId, patch) {
+  autoSetup();
+  getAuto(platform, chatId);
+  const keys = Object.keys(patch);
+  if (!keys.length) return;
+  open().prepare(`UPDATE auto_chats SET ${keys.map((k) => `${k} = ?`).join(", ")} WHERE platform = ? AND chat_id = ?`)
+    .run(...keys.map((k) => patch[k]), platform, chatId);
+}
+function listAuto() {
+  autoSetup();
+  return open().prepare("SELECT * FROM auto_chats WHERE sholat = 1 OR libur = 1").all();
+}
+function getOwnerCreds(ownerIds) {
+  const d = open();
+  const ids = (ownerIds || []).filter(Boolean);
+  for (const id of ids) {
+    const u = d.prepare("SELECT * FROM users WHERE id = ? AND api_key IS NOT NULL").get(id);
+    if (u && u.api_key) return u;
+  }
+  // fallback: user mana pun yang sudah setup AI
+  return d.prepare("SELECT * FROM users WHERE api_key IS NOT NULL LIMIT 1").get() || null;
+}
+module.exports = { getUser, setUser, tmpGet, tmpSet, pushHistory, getHistory, clearHistory, setPending, getPending, clearPending, clearPendingExcept, sweepExpired, bumpStat, getStats, addSchedule, listSchedules, deleteSchedule, clearSchedules, dueSchedules, bumpSchedule, getOwnerCreds, getAuto, setAuto, listAuto };

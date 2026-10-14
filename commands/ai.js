@@ -12,7 +12,21 @@ const PRESETS = {
 const MAX_MODELS_SHOWN = 30;
 
 function setupIntro() {
-  return "Pilih provider AI:\n1. tiprouter\n2. openrouter\n3. openai\n4. custom (ketik URL sendiri)\n\nBalas dengan angka 1-4.";
+  return {
+    text: "⚙️ SETUP AI\n━━━━━━━━━━━━━━━\nLangkah 1 dari 3 — Pilih provider AI-mu:",
+    buttons: [
+      [{ text: "1️⃣ TipRouter", data: "setup:1" }, { text: "2️⃣ OpenRouter", data: "setup:2" }],
+      [{ text: "3️⃣ OpenAI", data: "setup:3" }, { text: "4️⃣ Custom URL", data: "setup:4" }],
+    ],
+  };
+}
+
+function fmtModels(models) {
+  const shown = models.slice(0, MAX_MODELS_SHOWN);
+  return {
+    text: "🤖 PILIH MODEL\n━━━━━━━━━━━━━━━\nLangkah 3 dari 3 — Tap model favoritmu:\n" + shown.map((m, i) => `${i + 1}. ${m}`).join("\n"),
+    buttons: shown.slice(0, 20).map((m, i) => [{ text: `${i + 1}. ${String(m).slice(0, 32)}`, data: "model:" + (i + 1) }]),
+  };
 }
 
 async function handle(ctx) {
@@ -25,16 +39,26 @@ async function handle(ctx) {
   if (cmd === "/ai") {
     const sub = (parts[1] || "status").toLowerCase();
     if (sub === "setup") {
+      if (!isOwner) return reply("Khusus owner.");
       store.setUser(userId, { setup_step: "provider", setup_tmp: "{}" });
       return reply(setupIntro());
     }
+    if (sub === "setup_pilih") {
+      if (!isOwner) return reply("Khusus owner.");
+      const n = parts[2] || "";
+      store.setUser(userId, { setup_step: "provider", setup_tmp: "{}" });
+      const done = await handleSetupFlow({ ...ctx, text: n === "4" ? "4" : n });
+      if (done) return;
+      return reply(setupIntro());
+    }
     if (sub === "status") {
-      if (!user.api_key) return reply("Kamu belum setup AI. Ketik .ai setup untuk mulai.");
-      return reply(`Provider: ${user.base_url}\nModel: ${user.model}\nKetik .ai ganti untuk ganti model, .ai reset untuk hapus.`);
+      if (!isOwner) return reply("Khusus owner.");
+      if (!user.api_key) return reply("📭 Belum ada AI terhubung.\n\nKetik /ai setup untuk mulai — cuma 3 langkah cepat.");
+      return reply(`✅ AI AKTIF\n━━━━━━━━━━━━━━━\n🌐 Provider: ${user.base_url}\n🤖 Model: ${user.model}\n\n🔄 /ai ganti — ganti model\n🗑️ /ai reset — hapus semua`);
     }
     if (sub === "ganti") {
       if (!isOwner) return reply("Khusus owner.");
-      if (!user.api_key) return reply("Kamu belum setup AI. Ketik .ai setup dulu.");
+      if (!user.api_key) return reply("Kamu belum setup AI. Ketik /ai setup dulu.");
       const tmp = store.tmpGet(userId);
       tmp.url = user.base_url;
       tmp.key = user.api_key;
@@ -48,23 +72,28 @@ async function handle(ctx) {
       store.clearHistory(userId);
       return reply("API key dan riwayatmu sudah dihapus.");
     }
-    return reply("Pakai: .ai setup | .ai status | .ai ganti | .ai reset");
+    return reply("Pakai: /ai setup | .ai status | .ai ganti | .ai reset");
   }
 
   if (cmd === "/model") return handle({ ...ctx, text: "/ai ganti" });
 
   if (cmd === "/lupa") {
+    if (!isOwner) return reply("Khusus owner.");
     store.clearHistory(userId);
     return reply("Riwayat chat dihapus. Mulai fresh ya.");
   }
 
   if (cmd === "/tanya") {
-    if (!user.api_key) return reply("Kamu belum setup AI. Ketik .ai setup dulu.");
+    let cred = user.api_key ? user : null;
+    if (!cred && typeof store.getOwnerCreds === "function") {
+      try { cred = store.getOwnerCreds(process.env.OWNER_IDS ? process.env.OWNER_IDS.split(/[\s,]+/) : (process.env.OWNER_ID ? [process.env.OWNER_ID] : [])); } catch {}
+    }
+    if (!cred || !cred.api_key) return reply("AI owner belum disetup. Minta owner ketik /ai setup dulu.");
     let q = arg.replace(/^>(.*)<$/s, "$1").trim();
-    if (!q) return reply("Contoh: .tanya >di mana errornya<");
+    if (!q) return reply("Contoh: /tanya >di mana errornya<");
     store.sweepExpired();
     const pend = store.getPending(userId);
-    if (!pend) return reply("Belum ada file aktif. Kirim dulu filenya (max 150 MB, selain APK), lalu .tanya dalam 3 menit.");
+    if (!pend) return reply("Belum ada file aktif. Kirim dulu filenya (max 150 MB, selain APK), lalu /tanya dalam 3 menit.");
     const fs = require("fs");
     if (pend.expires_at && pend.expires_at < Date.now()) {
       try { fs.unlinkSync(pend.path); } catch {}
@@ -92,12 +121,12 @@ async function handle(ctx) {
     try {
       if (isImage) {
         const b64 = fs.readFileSync(pend.path).toString("base64").slice(0, 4000000);
-        out = await chatVision(user.base_url, user.api_key, user.model, b64,
+        out = await chatVision(cred.base_url, cred.api_key, cred.model, b64,
           "Kamu asisten berbahasa Indonesia. ATURAN WAJIB: seluruh jawaban HANYA Bahasa Indonesia, tanpa kalimat Inggris. Penanya: " + who + ". Pertanyaan soal gambar ini: " + q);
       } else {
         let teks = "";
         try { teks = extract(pend.path, pend.name); } catch (e) { teks = "(gagal baca file: " + e.message + ")"; }
-        out = await chat(user.base_url, user.api_key, user.model, [
+        out = await chat(cred.base_url, cred.api_key, cred.model, [
           { role: "system", content: "Kamu asisten berbahasa Indonesia. ATURAN WAJIB: seluruh jawaban HANYA Bahasa Indonesia, dilarang ada kalimat Inggris walau satu kata (dilarang membuka dengan 'I'll', 'Let me', 'I will', dsb). Jangan menulis proses berpikir — langsung berikan hasil akhirnya saja. FORMAT: teks chat biasa tanpa markdown — dilarang memakai **tebal**, # judul, ```blok kode```, atau backtick; tulis perintah sebagai teks baris biasa. Setiap pesan user diawali [nama pengirim]. Penanya sekarang: " + who + ". Jawab berdasarkan ISI FILE berikut (file ini dikirim oleh " + who + "):\n\n" + teks.slice(0, 12000) },
           ...hist.slice(-6),
           { role: "user", content: `[${who}]: ${q}` },
@@ -115,7 +144,7 @@ async function handle(ctx) {
     }
     store.pushHistory(userId, "user", `[${who}] (file: ${pend.name}): ${q}`, who);
     if (!out || !String(out).trim() || String(out).trim() === "(respon kosong)") {
-      return reply("AI mengembalikan respon kosong untuk file ini (kemungkinan format " + (pend.name || "file") + " tidak terbaca atau model menolak). Coba kirim sebagai .txt/.log, atau tanya lebih spesifik, mis. .tanya ringkas 5 poin.");
+      return reply("AI mengembalikan respon kosong untuk file ini (kemungkinan format " + (pend.name || "file") + " tidak terbaca atau model menolak). Coba kirim sebagai .txt/.log, atau tanya lebih spesifik, mis. /tanya ringkas 5 poin.");
     }
     store.pushHistory(userId, "assistant", out);
     store.bumpStat("ai_reply");
@@ -136,9 +165,9 @@ async function handleSetupFlow(ctx) {
     if (PRESETS[t]) url = PRESETS[t].url;
     else if (t === "4") {
       store.setUser(userId, { setup_step: "custom_url" });
-      return true && reply("Ketik base URL provider-mu (contoh: https://tiprouter.my.id/v1)") && true;
+      return true && reply("🌐 LANGKAH 2 DARI 3 — URL Custom\n━━━━━━━━━━━━━━━\nKetik base URL provider-mu:\nContoh: https://tiprouter.my.id/v1") && true;
     } else if (/^https?:\/\//i.test(t)) url = t;
-    else return true && reply("Balas 1-4, atau langsung ketik URL.") && true;
+    else return true && reply("👆 Tap salah satu tombol di atas, atau balas angka 1-4.") && true;
     return pickModels(ctx, url);
   }
 
@@ -150,7 +179,7 @@ async function handleSetupFlow(ctx) {
   if (step === "rekey") {
     const tmp = store.tmpGet(userId);
     const key = t.toLowerCase() === "sama" ? tmp.key : t.split(/\s+/)[0];
-    await reply("Mendeteksi daftar model...");
+    await reply("🔍 Menghubungi provider, mengambil daftar model...");
     let models;
     try {
       models = await fetchModels(tmp.url, key);
@@ -159,20 +188,20 @@ async function handleSetupFlow(ctx) {
     }
     if (!models.length) {
       store.setUser(userId, { setup_step: "idle" });
-      return true && reply("Tidak ada model terdeteksi di URL itu.") && true;
+      return true && reply("❌ Tidak ada model terdeteksi di URL itu. Cek URL / key lalu /ai setup lagi.") && true;
     }
     const shown = models.slice(0, MAX_MODELS_SHOWN);
     tmp.key = key;
     tmp.models = shown;
     store.tmpSet(userId, tmp);
     store.setUser(userId, { setup_step: "pick_model" });
-    return true && reply("Pilih model (balas angka):\n" + shown.map((m, i) => `${i + 1}. ${m}`).join("\n")) && true;
+    return true && reply(fmtModels(shown)) && true;
   }
 
   if (step === "api_key") {
     const tmp = store.tmpGet(userId);
     const key = t.split(/\s+/)[0];
-    await reply("Mendeteksi daftar model...");
+    await reply("🔍 Menghubungi provider, mengambil daftar model...");
     let models;
     try {
       models = await fetchModels(tmp.url, key);
@@ -181,14 +210,14 @@ async function handleSetupFlow(ctx) {
     }
     if (!models.length) {
       store.setUser(userId, { setup_step: "idle" });
-      return true && reply("Tidak ada model terdeteksi di URL itu. Cek URL lalu .ai setup lagi.") && true;
+      return true && reply("❌ Tidak ada model terdeteksi di URL itu. Cek URL lalu /ai setup lagi.") && true;
     }
     const shown = models.slice(0, MAX_MODELS_SHOWN);
     tmp.key = key;
     tmp.models = shown;
     store.tmpSet(userId, tmp);
     store.setUser(userId, { setup_step: "pick_model" });
-    return true && reply("Pilih model (balas angka):\n" + shown.map((m, i) => `${i + 1}. ${m}`).join("\n")) && true;
+    return true && reply(fmtModels(shown)) && true;
   }
 
   if (step === "pick_model") {
@@ -197,15 +226,15 @@ async function handleSetupFlow(ctx) {
     const n = parseInt(t, 10);
     if (!n || n < 1 || n > models.length) return true && reply(`Balas angka 1-${models.length}.`) && true;
     const model = models[n - 1];
-    await reply("Mengetes koneksi...");
+    await reply("⏳ Mengetes koneksi ke model...");
     try {
       await testConnection(tmp.url, tmp.key, model);
     } catch (e) {
-      return true && reply("Koneksi gagal: " + e.message + "\nKirim ulang API key-mu.") && true;
+      return true && reply("❌ Koneksi gagal: " + e.message + "\nKirim ulang API key-mu.") && true;
     }
     store.setUser(userId, { base_url: tmp.url, model, api_key: tmp.key, setup_step: "idle", setup_tmp: "{}" });
     store.bumpStat("ai_setup");
-    return true && reply(`Berhasil! Provider ${tmp.url}\nModel ${model}\nLangsung chat saja, aku jawab pakai AI.`) && true;
+    return true && reply(`🎉 SETUP BERHASIL!\n━━━━━━━━━━━━━━━\n🌐 ${tmp.url}\n🤖 ${model}\n\nLangsung chat saja — aku jawab pakai AI. Ketik /help untuk semua fitur.`) && true;
   }
 
   return false;
@@ -217,14 +246,14 @@ async function pickModels(ctx, url) {
   tmp.url = url;
   store.tmpSet(userId, tmp);
   store.setUser(userId, { setup_step: "api_key" });
-  return true && reply("Sekarang kirim API key-mu untuk provider itu (hanya kamu dan bot yang tahu, bisa dihapus via .ai reset).") && true;
+  return true && reply("🔑 LANGKAH 2 DARI 3 — API Key\\n━━━━━━━━━━━━━━━\\nProvider: " + url + "\\n\\nSekarang kirim API key-mu. Hanya kamu & bot yang tahu, bisa dihapus via /ai reset.") && true;
 }
 
 async function chatReply(ctx, userText) {
   const { userId, platform, reply, senderName } = ctx;
   const user = store.getUser(userId, platform);
   if (!user.api_key) {
-    await reply("Aku belum kenal AI-mu. Ketik .ai setup untuk hubungkan API key dulu.");
+    await reply("Aku belum kenal AI-mu. Ketik /ai setup untuk hubungkan API key dulu.");
     return;
   }
   const who = senderName || userId;

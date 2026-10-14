@@ -103,10 +103,20 @@ function safeUnlink(p) {
   try { if (p && fs.existsSync(p)) fs.unlinkSync(p); } catch {}
 }
 
+async function videoToMp3(srcPath) {
+  if (!(await haveBin("ffmpeg"))) throw new Error("ffmpeg belum terpasang di VPS");
+  if (!fs.existsSync(srcPath)) throw new Error("file video tidak ketemu");
+  if (fs.statSync(srcPath).size > MAX_BYTES) throw new Error("video di atas 150 MB");
+  const out = srcPath.replace(/\.[a-z0-9]+$/i, "") + "-" + Date.now() + ".mp3";
+  await run("ffmpeg", ["-y", "-i", srcPath, "-vn", "-b:a", "192k", out], 300000);
+  if (!fs.existsSync(out) || fs.statSync(out).size === 0) throw new Error("konversi gagal");
+  return out;
+}
+
 function cleanupTmp() {
   try {
     for (const f of fs.readdirSync(TMP)) safeUnlink(path.join(TMP, f));
   } catch {}
 }
 
-module.exports = { downloaderReady, download, safeUnlink, cleanupTmp, MAX_BYTES };
+module.exports = { downloaderReady, download, videoToMp3, safeUnlink, cleanupTmp, MAX_BYTES };
