@@ -1,0 +1,32 @@
+{
+  "name": "elaina-ai-bot",
+  "version": "0.1.0",
+  "description": "Elaina AI - Bot WhatsApp (Baileys) + Telegram (grammY) dengan chat AI custom provider, downloader sosmed, YT ke MP3, dan analisis file. Bahasa Indonesia.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "telegram",
+    "bot",
+    "baileys",
+    "grammy",
+    "ai"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "grammy": "^1.33.0",
+    "pino": "^9.7.0",
+    "qrcode": "^1.5.4"
+  },
+  "allowScripts": {
+    "@whiskeysockets/baileys@6.7.24": true,
+    "protobufjs@7.6.6": true
+  }
+}
