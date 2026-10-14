@@ -56,9 +56,9 @@ async function onMessage(ctx) {
     return reply(res);
   }
 
-  if (text === ".ping") return reply("Hidup! Bot WA+Telegram AI.");
-  if (text === ".help" || text === ".menu") return reply(HELP);
-  if (text === ".start") return reply("Halo! Ketik .ai setup untuk hubungkan AI-mu, atau .help untuk daftar perintah.");
+  if (text === "/ping") return reply("Hidup! Bot WA+Telegram AI.");
+  if (text === "/help" || text === "/menu") return reply(HELP);
+  if (text === "/start") return reply("Halo! Ketik .ai setup untuk hubungkan AI-mu, atau .help untuk daftar perintah.");
 
   const aiQ = text.replace(/^\/ai\s*/i, "");
   if (/^\/ai(\s|$)/i.test(text) && aiQ && !/^(setup|status|ganti|reset)\b/i.test(aiQ)) {
@@ -69,7 +69,7 @@ async function onMessage(ctx) {
 
   let r = await ai.handle({ ...ctx, text, isOwner: isOwner(ctx) });
   if (r !== null && r !== undefined) return;
-  r = await dlCmd.autoHandle({ ...ctx, text });
+  r = await dlCmd.handle({ ...ctx, text });
   if (r !== null && r !== undefined) return;
 
   const user = store.getUser(userId, platform);
