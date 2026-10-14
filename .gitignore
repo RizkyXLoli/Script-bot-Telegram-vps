@@ -3,3 +3,4 @@ node_modules/
 auth_info/
 db/*.sqlite*
 *.log
+db/wa-session/

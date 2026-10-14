@@ -116,7 +116,7 @@ kelola_owner() {
     echo "  b. Tambah ID WhatsApp (kirim /id ke bot)"
     echo ""
     echo "  Cara ambil ID WhatsApp: chat ke bot, kirim /id,"
-    echo "  lalu salin angka yang dibalas bot (mis. 266915725484275)."
+    echo "  lalu salin angka yang dibalas bot (mis. 123456789)."
     echo "  c. Hapus satu"
     echo "  d. Kembali"
     read -p "Pilih [a-d]: " Q
@@ -133,7 +133,7 @@ kelola_owner() {
          echo "$cur" | grep -qw "$N" && { echo "Sudah ada."; continue; }
          gabung "${cur:+$cur,}$N"; cur="$(grep ^OWNER_IDS= .env | cut -d= -f2)"
          echo "Ditambah. Restart bot (menu 5) agar berlaku." ;;
-      c) read -p "Hapus yang mana (tulis persis, mis. tg:123 atau wa:266915725484275): " H
+      c) read -p "Hapus yang mana (tulis persis, mis. tg:123 atau wa:456): " H
          baru="$(echo ",$cur," | sed "s|,$H,|,|" | sed 's/^,//;s/,$//')"
          gabung "$baru"; echo "Daftar sekarang: ${baru:-kosong}" ;;
       d) break ;;
