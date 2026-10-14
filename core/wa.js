@@ -77,9 +77,23 @@ async function startWA(onMessage, onFile, opts) {
     }
   });
 
-  const replyFor = (jid) => async (t) => {
-    const s = typeof t === "object" && t.buttons ? t.text : String(t);
-    await sock.sendMessage(jid, { text: s.slice(0, 4000) });
+  const replyFor = (jid, sender, senderName, msgKey) => async (t) => {
+    let s = t;
+    if (typeof t === "object" && t !== null) {
+      s = t.text || "";
+      if (t.buttons) {
+        const flat = t.buttons.flat();
+        s += "\n\nBalas dengan angka:\n" + flat.map((b, i) => `${i + 1}. ${b.text}`).join("\n");
+      }
+      s = String(s);
+    } else s = String(t);
+    s = s.slice(0, 4000);
+    const isGroup = jid.endsWith("@g.us");
+    if (isGroup && sender) {
+      await sock.sendMessage(jid, { text: "@" + sender.replace(/@.*$/, "").split(":").pop() + " " + s, mentions: [sender] }, { quoted: msgKey ? { key: msgKey, message: { conversation: "." } } : undefined });
+    } else {
+      await sock.sendMessage(jid, { text: s });
+    }
   };
   const replyFileFor = (jid) => async (fp, cap) => {
     if (fp.endsWith(".mp3")) await sock.sendMessage(jid, { audio: { url: fp }, mimetype: "audio/mpeg", fileName: path.basename(fp) });
@@ -102,12 +116,17 @@ async function startWA(onMessage, onFile, opts) {
         const ctx = {
           userId, platform: "wa", text, isGroup, senderName, senderUser: senderName.toLowerCase().replace(/\s+/g, ""),
           chatId: jid,
-          reply: replyFor(jid), replyFile: replyFileFor(jid),
+          reply: replyFor(jid, sender, senderName, m.key), replyFile: replyFileFor(jid),
+          kickUser: async () => { await sock.groupParticipantsUpdate(jid, [sender], "remove"); },
           sendAlbum: async (items) => {
             for (const it of items) {
               try {
-                await sock.sendMessage(jid, { image: { url: it.img }, caption: (it.caption || "").slice(0, 1000) });
-              } catch { await replyFor(jid)(it.caption || it.img); }
+                if (isGroup) {
+                  await sock.sendMessage(jid, { image: { url: it.img }, caption: ("@" + sender.replace(/@.*$/, "") + " " + (it.caption || "")).slice(0, 1000), mentions: [sender] }, { quoted: { key: m.key, message: { conversation: "." } } });
+                } else {
+                  await sock.sendMessage(jid, { image: { url: it.img }, caption: (it.caption || "").slice(0, 1000) });
+                }
+              } catch { await replyFor(jid, sender, senderName, m.key)(it.caption || it.img); }
             }
           },
         };
@@ -129,6 +148,26 @@ async function startWA(onMessage, onFile, opts) {
     }
   });
   try { require("./scheduler").registerWA(sock); } catch {}
+  // Welcome member baru (disetting owner via /mod)
+  sock.ev.on("group-participants.update", async ({ id, participants, action }) => {
+    try {
+      if (action !== "add") return;
+      const store = require("../db/store");
+      const mod = require("../commands/mod");
+      const cfg = store.getMod("wa", id);
+      if (!cfg || !cfg.welcome_on) return;
+      for (const p of participants || []) {
+        const num = String(p).replace(/@.*$/, "").split(":").pop();
+        const name = "@" + num;
+        const teks = mod.welcomeText(cfg, name);
+        if (cfg.welcome_img && /^https?:\/\//i.test(cfg.welcome_img)) {
+          try { await sock.sendMessage(id, { image: { url: cfg.welcome_img }, caption: teks.slice(0, 1000), mentions: [p] }); continue; }
+          catch {}
+        }
+        await sock.sendMessage(id, { text: teks.slice(0, 4000), mentions: [p] });
+      }
+    } catch (e) { log.error("welcome WA: " + e.message); }
+  });
   return sock;
 }
 

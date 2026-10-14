@@ -64,18 +64,22 @@ async function startTG(onMessage, onFile) {
       await onMessage({
         userId, platform: "tg", text, isGroup, senderName, senderUser,
         chatId: String(ctx.chat.id),
-        reply: rich((m, extra) => ctx.reply(m.slice(0, 4000), extra)),
+        reply: rich((m, extra) => ctx.reply(m.slice(0, 4000), { reply_parameters: { message_id: ctx.message.message_id }, ...(extra || {}) })),
+        kickUser: async () => {
+          await ctx.api.banChatMember(ctx.chat.id, ctx.from.id);
+          try { await ctx.api.unbanChatMember(ctx.chat.id, ctx.from.id); } catch {}
+        },
         replyFile: async (fp, cap) => {
           if (fs.statSync(fp).size > 150 * 1024 * 1024) {
-            await ctx.reply("File di atas 150 MB, tidak bisa dikirim.");
+            await ctx.reply("File di atas 150 MB, tidak bisa dikirim.", { reply_parameters: { message_id: ctx.message.message_id } });
             return;
           }
-          if (fp.endsWith(".mp3")) await ctx.replyWithAudio(new (require("grammy").InputFile)(fp), { caption: cap || "" });
+          if (fp.endsWith(".mp3")) await ctx.replyWithAudio(new (require("grammy").InputFile)(fp), { caption: cap || "", reply_parameters: { message_id: ctx.message.message_id } });
           else if (/\.(jpg|jpeg|png|webp)$/i.test(fp)) {
-            if (/^https?:\/\//i.test(fp)) await ctx.replyWithPhoto(fp, { caption: (cap || "").slice(0, 1000) });
-            else await ctx.replyWithPhoto(new (require("grammy").InputFile)(fp), { caption: (cap || "").slice(0, 1000) });
+            if (/^https?:\/\//i.test(fp)) await ctx.replyWithPhoto(fp, { caption: (cap || "").slice(0, 1000), reply_parameters: { message_id: ctx.message.message_id } });
+            else await ctx.replyWithPhoto(new (require("grammy").InputFile)(fp), { caption: (cap || "").slice(0, 1000), reply_parameters: { message_id: ctx.message.message_id } });
           }
-          else await ctx.replyWithVideo(new (require("grammy").InputFile)(fp), { caption: (cap || "").slice(0, 1000) });
+          else await ctx.replyWithVideo(new (require("grammy").InputFile)(fp), { caption: (cap || "").slice(0, 1000), reply_parameters: { message_id: ctx.message.message_id } });
         },
         sendAlbum: async (items) => {
           
@@ -92,7 +96,7 @@ async function startTG(onMessage, onFile) {
                 ...(i + j === 0 && it.caption ? { caption: it.caption.slice(0, 1000) } : {}),
               };
             });
-            await ctx.replyWithMediaGroup(batch);
+            await ctx.replyWithMediaGroup(batch, { reply_parameters: { message_id: ctx.message.message_id } });
           }
         },
       });
@@ -179,6 +183,27 @@ async function startTG(onMessage, onFile) {
   });
 
   bot.catch((e) => log.error("TG error: " + (e.message || e)));
+
+  // Welcome member baru TG (disetting owner via /mod)
+  bot.on("message:new_chat_members", async (ctx) => {
+    try {
+      const store = require("../db/store");
+      const mod = require("../commands/mod");
+      const cfg = store.getMod("tg", String(ctx.chat.id));
+      if (!cfg || !cfg.welcome_on) return;
+      for (const u of ctx.message.new_chat_members || []) {
+        if (u.is_bot) continue;
+        const name = (u.first_name || "kawan") + (u.last_name ? " " + u.last_name : "");
+        const teks = mod.welcomeText(cfg, name);
+        if (cfg.welcome_img && /^https?:\/\//i.test(cfg.welcome_img)) {
+          try { await ctx.replyWithPhoto(cfg.welcome_img, { caption: teks.slice(0, 1000) }); continue; }
+          catch {}
+        }
+        await ctx.reply(teks.slice(0, 4000));
+      }
+    } catch (e) { log.error("welcome TG: " + e.message); }
+  });
+
   bot.start();
   try { require("./scheduler").registerTG(bot); } catch {}
   log.info("Telegram terhubung.");

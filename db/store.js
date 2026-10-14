@@ -211,6 +211,82 @@ function listAuto() {
   autoSetup();
   return open().prepare("SELECT * FROM auto_chats WHERE sholat = 1 OR libur = 1").all();
 }
+function modSetup() {
+  open().exec(`CREATE TABLE IF NOT EXISTS mod_chats (
+    platform TEXT NOT NULL, chat_id TEXT NOT NULL,
+    anti_badword INTEGER DEFAULT 0,
+    warn_msg TEXT DEFAULT '',
+    max_warn INTEGER DEFAULT 3,
+    welcome_on INTEGER DEFAULT 0,
+    welcome_text TEXT DEFAULT '',
+    welcome_img TEXT DEFAULT '',
+    PRIMARY KEY (platform, chat_id)
+  );
+  CREATE TABLE IF NOT EXISTS mod_words (
+    platform TEXT NOT NULL, chat_id TEXT NOT NULL, word TEXT NOT NULL,
+    PRIMARY KEY (platform, chat_id, word)
+  );
+  CREATE TABLE IF NOT EXISTS mod_warns (
+    platform TEXT NOT NULL, chat_id TEXT NOT NULL, user_id TEXT NOT NULL,
+    count INTEGER DEFAULT 0,
+    PRIMARY KEY (platform, chat_id, user_id)
+  );`);
+}
+function getMod(platform, chatId) {
+  modSetup();
+  let r = open().prepare("SELECT * FROM mod_chats WHERE platform = ? AND chat_id = ?").get(platform, chatId);
+  if (!r) {
+    open().prepare("INSERT INTO mod_chats (platform, chat_id) VALUES (?, ?)").run(platform, chatId);
+    r = open().prepare("SELECT * FROM mod_chats WHERE platform = ? AND chat_id = ?").get(platform, chatId);
+  }
+  return r;
+}
+function setMod(platform, chatId, patch) {
+  modSetup();
+  getMod(platform, chatId);
+  const keys = Object.keys(patch);
+  if (!keys.length) return;
+  open().prepare(`UPDATE mod_chats SET ${keys.map((k) => `${k} = ?`).join(", ")} WHERE platform = ? AND chat_id = ?`)
+    .run(...keys.map((k) => patch[k]), platform, chatId);
+}
+function addModWord(platform, chatId, word) {
+  modSetup();
+  open().prepare("INSERT OR IGNORE INTO mod_words (platform, chat_id, word) VALUES (?, ?, ?)")
+    .run(platform, chatId, word.toLowerCase());
+}
+function delModWord(platform, chatId, word) {
+  modSetup();
+  return open().prepare("DELETE FROM mod_words WHERE platform = ? AND chat_id = ? AND word = ?")
+    .run(platform, chatId, word.toLowerCase()).changes;
+}
+function listModWords(platform, chatId) {
+  modSetup();
+  return open().prepare("SELECT word FROM mod_words WHERE platform = ? AND chat_id = ? ORDER BY word ASC")
+    .all(platform, chatId).map((r) => r.word);
+}
+function clearModWords(platform, chatId) {
+  modSetup();
+  return open().prepare("DELETE FROM mod_words WHERE platform = ? AND chat_id = ?").run(platform, chatId).changes;
+}
+function bumpWarn(platform, chatId, userId) {
+  modSetup();
+  open().prepare("INSERT INTO mod_warns (platform, chat_id, user_id, count) VALUES (?, ?, ?, 1) " +
+    "ON CONFLICT(platform, chat_id, user_id) DO UPDATE SET count = count + 1")
+    .run(platform, chatId, userId);
+  return open().prepare("SELECT count FROM mod_warns WHERE platform = ? AND chat_id = ? AND user_id = ?")
+    .get(platform, chatId, userId).count;
+}
+function resetWarn(platform, chatId, userId) {
+  modSetup();
+  return open().prepare("DELETE FROM mod_warns WHERE platform = ? AND chat_id = ? AND user_id = ?")
+    .run(platform, chatId, userId).changes;
+}
+function getWarn(platform, chatId, userId) {
+  modSetup();
+  const r = open().prepare("SELECT count FROM mod_warns WHERE platform = ? AND chat_id = ? AND user_id = ?")
+    .get(platform, chatId, userId);
+  return (r && r.count) || 0;
+}
 function getOwnerCreds(ownerIds) {
   const d = open();
   const ids = (ownerIds || []).filter(Boolean);
@@ -221,4 +297,4 @@ function getOwnerCreds(ownerIds) {
   
   return d.prepare("SELECT * FROM users WHERE api_key IS NOT NULL LIMIT 1").get() || null;
 }
-module.exports = { getUser, setUser, tmpGet, tmpSet, pushHistory, getHistory, clearHistory, setPending, getPending, clearPending, clearPendingExcept, sweepExpired, bumpStat, getStats, addSchedule, listSchedules, deleteSchedule, clearSchedules, dueSchedules, bumpSchedule, getOwnerCreds, getAuto, setAuto, listAuto };
+module.exports = { getUser, setUser, tmpGet, tmpSet, pushHistory, getHistory, clearHistory, setPending, getPending, clearPending, clearPendingExcept, sweepExpired, bumpStat, getStats, addSchedule, listSchedules, deleteSchedule, clearSchedules, dueSchedules, bumpSchedule, getOwnerCreds, getAuto, setAuto, listAuto, getMod, setMod, addModWord, delModWord, listModWords, clearModWords, bumpWarn, resetWarn, getWarn };

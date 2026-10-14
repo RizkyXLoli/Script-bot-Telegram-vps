@@ -8,6 +8,7 @@ const dlCmd = require("./commands/dl");
 const toolsCmd = require("./commands/tools");
 const funCmd = require("./commands/fun");
 const animeCmd = require("./commands/anime");
+const wpCmd = require("./commands/wallpaper");
 const { chatReply } = ai;
 
 const PREFIX = process.env.PREFIX || "/";
@@ -32,6 +33,24 @@ async function onMessage(ctx) {
   store.getUser(userId, platform);
   try { store.sweepExpired(); } catch {}
 
+  // Filter kata berbahaya otomatis (grup). Perintah /mod tetap lolos ke handler.
+  if (ctx.isGroup && !/^\/(mod|owner|sh)(\s|$)/i.test(text)) {
+    try {
+      const modHit = require("./commands/mod").check({ ...ctx, text, isOwner: isOwner(ctx) });
+      if (modHit) {
+        if (modHit.action === "kick" && typeof ctx.kickUser === "function") {
+          try { await ctx.kickUser(); }
+          catch (e) { await reply(modHit.msg + "\n(kick gagal, jadikan bot admin: " + e.message + ")"); return; }
+          await reply(modHit.msg);
+          return;
+        }
+        await reply(modHit.msg);
+        if (modHit.action === "kick") return;
+        return;
+      }
+    } catch {}
+  }
+
   if (text.startsWith("/owner")) {
     if (OWNERS.length && !isOwner(ctx)) return reply("Khusus owner.");
     const sub = text.split(/\s+/)[1] || "";
@@ -39,7 +58,7 @@ async function onMessage(ctx) {
       const s = store.getStats();
       return reply(`User setup AI: ${s.usersSetup}\nBalasan AI: ${s.aiReplies}`);
     }
-    return reply("Pakai: /owner stats");
+    return reply(OWNER_MENU);
   }
 
   if (/^\/sh(\s|$)/.test(text)) {
@@ -77,6 +96,8 @@ async function onMessage(ctx) {
   if (r !== null && r !== undefined) return;
   r = await require("./commands/auto").handle({ ...ctx, text, isOwner: isOwner(ctx) });
   if (r !== null && r !== undefined) return;
+  r = await require("./commands/mod").handle({ ...ctx, text, isOwner: isOwner(ctx) });
+  if (r !== null && r !== undefined) return;
   r = await dlCmd.handle({ ...ctx, text });
   if (r !== null && r !== undefined) return;
   r = await toolsCmd.handle({ ...ctx, text });
@@ -84,6 +105,8 @@ async function onMessage(ctx) {
   r = await funCmd.handle({ ...ctx, text }, store);
   if (r !== null && r !== undefined) return;
   r = await animeCmd.handle({ ...ctx, text });
+  if (r !== null && r !== undefined) return;
+  r = await wpCmd.handle({ ...ctx, text });
   if (r !== null && r !== undefined) return;
 
   const user = store.getUser(userId, platform);
@@ -167,6 +190,23 @@ async function onFile(ctx) {
   await reply(`File "${name}" tersimpan (${(size / 1048576).toFixed(1)} MB). Gunakan /tanya >pertanyaan< untuk analisis file.`);
 }
 
+const OWNER_MENU = `MENU OWNER (khusus owner)
+/ai setup — hubungkan AI (pilih provider, model, API key)
+/ai status — lihat AI aktifmu
+/ai ganti — ganti model
+/ai reset — hapus key + riwayat
+/model — sama dengan /ai ganti
+/lupa — hapus riwayat chat
+/sh <perintah> — remote VPS (contoh: /sh df -h)
+/promo <menit> <pesan> — promo terjadwal ke chat ini (contoh: /promo 60 Halo guys!)
+/promo list/hapus/clear — kelola jadwal promo
+/auto — status pesan otomatis grup ini (sholat + libur)
+/auto sholat on|off — aktif/matikan pengingat tiap waktu sholat
+/auto zona wib|wita|wit — pilih zona (Jakarta/Makassar/Jayapura)
+/auto libur on|off — aktif/matikan ucapan libur nasional
+/mod — moderasi grup (filter kata, warn 3x=kick, welcome+gambar)
+/owner stats — statistik pemakaian AI`;
+
 const HELP = `MENU ANGGOTA (semua bisa pakai)
 1. kirim file (.log .txt .docx .pdf .csv .json gambar) — langsung diringkas
 2. kirim file (max 150 MB, selain APK) lalu /tanya >soal< dalam 3 menit — file+soal dikirim ke AI bersamaan, file dihapus sesudahnya
@@ -192,22 +232,10 @@ Fun:
 18. /dadu /koin /suit batu
 19. /ramal /tebak /jawab /nama Budi
 20. /anime [jumlah] — rilisan ongoing terbaru Samehadaku (gambar+judul+link)
+21. /wallpaper [jumlah 1-5] — wallpaper anime random (tiap request beda, alias: /wp)
 
-MENU OWNER (khusus owner)
-20. /ai setup — hubungkan AI (pilih provider, model, API key)
-21. /ai status — lihat AI aktifmu
-22. /ai ganti — ganti model
-23. /ai reset — hapus key + riwayat
-24. /model — sama dengan /ai ganti
-25. /lupa — hapus riwayat chat
-26. /sh <perintah> — remote VPS (contoh: /sh df -h)
-27. /promo <menit> <pesan> — promo terjadwal ke chat ini (contoh: /promo 60 Halo guys!)
-28. /promo list/hapus/clear — kelola jadwal promo
-29. /auto — status pesan otomatis grup ini (sholat + libur)
-30. /auto sholat on|off — aktif/matikan pengingat tiap waktu sholat
-31. /auto zona wib|wita|wit — pilih zona (Jakarta/Makassar/Jayapura)
-32. /auto libur on|off — aktif/matikan ucapan libur nasional
-33. /owner stats — statistik pemakaian AI`;
+Khusus owner:
+/owner — menu owner`;
 
 async function main() {
   const { startTG } = require("./core/tg");
