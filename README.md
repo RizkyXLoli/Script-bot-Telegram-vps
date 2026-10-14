@@ -14,8 +14,8 @@ AI:
 - Chat bebas — kirim teks langsung dijawab AI (setelah setup)
 
 Downloader:
-- /dl <link> — download video (YouTube, TikTok, IG Reels, FB, X), maks 150 MB
-- /mp3 <link> — YouTube ke MP3 (atau kirim link + tulis "jadi mp3")
+- /dl <link> — download video (YouTube, TikTok, IG Reels, FB, X), maks 150 MB , langsung kirim link tanpa perintah /dl juga bisa
+- /mp3 <link> — YouTube ke MP3 
 - Kirim video (.mp4 .mov .mkv .webm) — otomatis dikonversi ke MP3, dikirim balik
 
 File & dokumen:
@@ -26,7 +26,7 @@ Anime:
 - /anime [jumlah] — rilisan ongoing terbaru Samehadaku (gambar + judul + link, 1 album)
 
 Tools:
-- /kalk 12*8+5 — kalkulator
+- /kalk 7+2 — kalkulator(biar tidak gblk kayak prabowo
 - /cuaca Jakarta — info cuaca
 - /tr en halo — translate
 - /wiki Soekarno — Wikipedia
