@@ -1,4 +1,4 @@
-# Elaina AI Bot — WhatsApp + Telegram
+#  Bot & AI — WhatsApp + Telegram
 
 Bot WhatsApp (Baileys) + Telegram (grammY) dalam satu repo. Bahasa Indonesia.
 
