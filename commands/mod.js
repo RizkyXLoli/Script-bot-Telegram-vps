@@ -25,16 +25,16 @@ async function handle(ctx) {
       "Teks welcome: " + (cur.welcome_text || "(default)") + "\n" +
       "Gambar welcome: " + (cur.welcome_img || "-") + "\n\n" +
       "/mod on|off — aktif/matikan filter\n" +
-      "/mod tambah <kata> — tambah kata berbahaya\n" +
-      "/mod hapus <kata> — hapus satu kata\n" +
-      "/mod list — daftar kata\n" +
-      "/mod clear — hapus semua kata\n" +
-      "/mod batas <angka> — batas peringatan sblm kick (default 3)\n" +
-      "/mod pesan <teks> — pesan peringatan (pakai @nama, @hitung, @batas)\n" +
-      "/mod unwarn @user — reset peringatan user\n" +
-      "/mod welcome on|off\n" +
-      "/mod setwelcome <teks> — teks sambutan (pakai @nama)\n" +
-      "/mod setimg <link gambar> — gambar anime welcome"
+      "1. /mod tambah <kata> — tambah kata berbahaya\n" +
+      "2. /mod hapus <kata> — hapus satu kata\n" +
+      "3. /mod list — daftar kata\n" +
+      "4. /mod clear — hapus semua kata\n" +
+      "5. /mod batas <angka> — batas peringatan sblm kick (default 3)\n" +
+      "6. /mod pesan <teks> — pesan peringatan (pakai @nama, @hitung, @batas)\n" +
+      "7. /mod unwarn @user — reset peringatan user\n" +
+      "8. /mod welcome on|off\n" +
+      "9. /mod setwelcome <teks> — teks sambutan (pakai @nama)\n" +
+      "10. /mod setimg <link gambar> — gambar anime welcome"
     );
   }
   if (a === "on") { store.setMod(platform, chatId, { anti_badword: 1 }); return reply("Filter kata berbahaya AKTIF."); }

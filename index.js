@@ -191,21 +191,21 @@ async function onFile(ctx) {
 }
 
 const OWNER_MENU = `MENU OWNER (khusus owner)
-/ai setup — hubungkan AI (pilih provider, model, API key)
-/ai status — lihat AI aktifmu
-/ai ganti — ganti model
-/ai reset — hapus key + riwayat
-/model — sama dengan /ai ganti
-/lupa — hapus riwayat chat
-/sh <perintah> — remote VPS (contoh: /sh df -h)
-/promo <menit> <pesan> — promo terjadwal ke chat ini (contoh: /promo 60 Halo guys!)
-/promo list/hapus/clear — kelola jadwal promo
-/auto — status pesan otomatis grup ini (sholat + libur)
-/auto sholat on|off — aktif/matikan pengingat tiap waktu sholat
-/auto zona wib|wita|wit — pilih zona (Jakarta/Makassar/Jayapura)
-/auto libur on|off — aktif/matikan ucapan libur nasional
-/mod — moderasi grup (filter kata, warn 3x=kick, welcome+gambar)
-/owner stats — statistik pemakaian AI`;
+1. /ai setup — hubungkan AI (pilih provider, model, API key)
+2. /ai status — lihat AI aktifmu
+3. /ai ganti — ganti model
+4. /ai reset — hapus key + riwayat
+5. /model — sama dengan /ai ganti
+6. /lupa — hapus riwayat chat
+7. /sh <perintah> — remote VPS (contoh: /sh df -h)
+8. /promo <menit> <pesan> — promo terjadwal ke chat ini (contoh: /promo 60 Halo guys!)
+9. /promo list/hapus/clear — kelola jadwal promo
+10. /auto — status pesan otomatis grup ini (sholat + libur)
+11. /auto sholat on|off — aktif/matikan pengingat tiap waktu sholat
+12. /auto zona wib|wita|wit — pilih zona (Jakarta/Makassar/Jayapura)
+13. /auto libur on|off — aktif/matikan ucapan libur nasional
+14. /mod — moderasi grup (filter kata, warn 3x=kick, welcome+gambar)
+15. /owner stats — statistik pemakaian AI`;
 
 const HELP = `MENU ANGGOTA (semua bisa pakai)
 1. kirim file (.log .txt .docx .pdf .csv .json gambar) — langsung diringkas
