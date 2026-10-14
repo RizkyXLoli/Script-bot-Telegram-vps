@@ -1,6 +1,5 @@
 "use strict";
-// Loop tiap 30 detik: kirim jadwal promo yang jatuh tempo via sender TG/WA.
-// Tiap 60 detik: cek pesan otomatis (pengingat sholat + ucapan libur nasional).
+
 const store = require("../db/store");
 const { ZONES } = require("../commands/auto");
 
@@ -22,7 +21,6 @@ async function get(u, timeout) {
   finally { clearTimeout(t); }
 }
 
-// date WIB hari ini YYYY-MM-DD + jam HH:MM sekarang per zona
 function nowIn(tz) {
   const d = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
   const p = (n) => String(n).padStart(2, "0");
@@ -47,7 +45,7 @@ async function sendAuto() {
     const zona = (c.zona || "wib").toLowerCase();
     const tz = TZ[zona] || TZ.wib;
     const now = nowIn(tz);
-    // 1) pengingat sholat: cek tiap waktu, kirim sekali per waktu per hari
+    
     if (c.sholat) {
       try {
         const kota = ZONES[zona] || "Jakarta";
@@ -68,7 +66,7 @@ async function sendAuto() {
         }
       } catch (e) { console.error("[auto-sholat] " + e.message); }
     }
-    // 2) libur nasional: cek API hari ini, kirim sekali per tanggal
+    
     if (c.libur && c.libur_date !== now.date) {
       try {
         const hj = JSON.parse(await get("https://api.kemendesa.link/libur-nasional/api/is-holiday?date=" + now.date));
@@ -98,7 +96,7 @@ async function sendDue() {
       } else if (s.platform === "wa" && waSock) {
         await waSock.sendMessage(s.chat_id, { text: s.text.slice(0, 4000) });
       } else {
-        continue; // platform belum online, coba lagi nanti tanpa geser jadwal
+        continue; 
       }
       store.bumpSchedule(s.id, s.interval_min);
     } catch (e) {

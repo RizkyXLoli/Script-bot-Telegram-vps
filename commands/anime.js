@@ -1,5 +1,5 @@
 "use strict";
-// /anime — daftar rilis terbaru (ongoing) dari Samehadaku, dikirim sebagai 1 album.
+
 const https = require("https");
 
 const UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36";
@@ -47,7 +47,7 @@ async function handle(ctx) {
   const list = parseList(html, n);
   if (!list.length) { await reply("Tidak ada rilisan ongoing ditemukan."); return true; }
 
-  // Unduh semua poster ke /tmp dulu (Telegram media group tidak terima URL langsung)
+  
   const fs = require("fs"), os = require("os"), path = require("path");
   const items = [];
   for (const a of list) {
@@ -68,7 +68,7 @@ async function handle(ctx) {
 
   try {
     if (typeof ctx.sendAlbum === "function") {
-      // Untuk TG: kirim sebagai 1 media group dari file lokal
+      
       await ctx.sendAlbum(items.map((it) => ({ img: it.local ? it.img : it.img, caption: it.caption, _local: it.local })));
     }
     else throw new Error("no-album");
@@ -79,7 +79,7 @@ async function handle(ctx) {
     }
   }
   for (const it of items) { if (it.local) { try { fs.unlinkSync(it.img); } catch {} } }
-  // Daftar semua judul+link dalam 1 pesan (caption album TG hanya tampil 1)
+  
   const daftar = list.map((a, i) => `${i + 1}. ${a.judul}\n${a.link}`).join("\n\n").slice(0, 3800);
   await reply(daftar);
   return true;

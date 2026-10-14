@@ -1,24 +1,71 @@
-# wa-tg-ai-bot
+# Elaina AI Bot — WhatsApp + Telegram
 
 Bot WhatsApp (Baileys) + Telegram (grammY) dalam satu repo. Bahasa Indonesia.
 
 ## Fitur
 
-- **Chat AI custom provider** — tiap user `/ai setup`: pilih provider (tiprouter/openrouter/openai/custom URL), bot deteksi daftar model otomatis, user pilih model + kirim API key. Key disimpan per-user di SQLite.
-- **Downloader sosmed** — `/dl <link>` (YouTube, TikTok, IG Reels, FB, X). Maks 150 MB. File di VPS dihapus setelah terkirim.
-- **YT ke MP3** — `/mp3 <link>`.
-- **Analisis file** — kirim `.log .txt .docx .pdf .csv .json .md` atau gambar, bot ringkas + bisa `/tanya`.
-- **Umum** — `/ping /help /menu /lupa /model`, owner: `/owner stats`.
+AI:
+- /ai setup — hubungkan AI sendiri (pilih provider: tiprouter/openrouter/openai/custom URL, pilih model, kirim API key)
+- /ai status — lihat AI aktifmu
+- /ai ganti — ganti model
+- /ai reset — hapus key + riwayat
+- /model — sama dengan /ai ganti
+- /lupa — hapus riwayat chat
+- Chat bebas — kirim teks langsung dijawab AI (setelah setup)
+
+Downloader:
+- /dl <link> — download video (YouTube, TikTok, IG Reels, FB, X), maks 150 MB
+- /mp3 <link> — YouTube ke MP3 (atau kirim link + tulis "jadi mp3")
+- Kirim video (.mp4 .mov .mkv .webm) — otomatis dikonversi ke MP3, dikirim balik
+
+File & dokumen:
+- Kirim file (.log .txt .docx .pdf .csv .json .md gambar) — langsung diringkas AI
+- /tanya >soal< — tanya soal file yang baru dikirim (berlaku 3 menit)
+
+Anime:
+- /anime [jumlah] — rilisan ongoing terbaru Samehadaku (gambar + judul + link, 1 album)
+
+Tools:
+- /kalk 12*8+5 — kalkulator
+- /cuaca Jakarta — info cuaca
+- /tr en halo — translate
+- /wiki Soekarno — Wikipedia
+- /qr <teks> — link gambar QR
+- /short <link> — perpendek link
+- /jam wib — jam dunia
+- /sholat Jakarta — jadwal sholat
+
+Fun:
+- /quote /joke /fakta /pantun
+- /dadu /koin /suit batu
+- /ramal /tebak /jawab /nama Budi
+
+Grup & jadwal:
+- /promo <menit> <pesan> — promo terjadwal ke chat ini
+- /promo list/hapus/clear — kelola jadwal promo
+- /auto — status pesan otomatis grup (sholat + libur nasional)
+- /auto sholat on|off — pengingat tiap waktu sholat
+- /auto zona wib|wita|wit — pilih zona waktu
+- /auto libur on|off — ucapan libur nasional
+
+Lainnya:
+- /ping — cek hidup
+- /id — lihat ID WhatsApp/Telegram kamu (untuk daftar owner)
+- /help /menu /start — bantuan
+
+Owner (khusus owner):
+- /owner stats — statistik pemakaian AI
+- /sh <perintah> — remote VPS (contoh: /sh df -h)
 
 ## Pasang
 
 ```
 npm install
 cp .env.example .env
-# isi BOT_TOKEN (dari @BotFather) dan OWNER_NUMBER (628xx)
-node index.js
+bash setup.sh
 ```
 
+Isi BOT_TOKEN (dari @BotFather), tambah owner via menu 4 (kirim /id ke bot untuk dapat ID).
 Pairing WA: kode 8 digit muncul di log, ketik di HP > Perangkat Tertaut.
 
 ## Opsional (downloader)
@@ -29,15 +76,15 @@ sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o
 sudo chmod +x /usr/local/bin/yt-dlp
 ```
 
-Tanpa ini, `/dl` dan `/mp3` balas panduan install.
+Tanpa ini, /dl dan /mp3 balas panduan install.
 
 ## Struktur
 
 ```
 core/wa.js  core/tg.js      koneksi platform
-commands/ai.js  commands/dl.js   perintah
+commands/ai.js  dl.js  anime.js  tools.js  fun.js  promo.js  auto.js
 services/ai.js  downloader.js  fileanalyzer.js
-db/store.js     index.js  .env.example
+db/store.js     index.js  setup.sh  .env.example
 ```
 
-`auth_info/` (sesi WA), `db/*.sqlite3`, `.env` masuk `.gitignore` — aman di-push ke GitHub.
+`db/wa-session/`, `db/*.sqlite3`, `.env`, `node_modules/` masuk `.gitignore`.

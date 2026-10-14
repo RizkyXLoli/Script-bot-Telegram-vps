@@ -1,5 +1,5 @@
 "use strict";
-// Tools: kalkulator, cuaca, translate, wiki, QR, shortlink, jam dunia, sholat
+
 async function get(u, timeout=15000) {
   const c = new AbortController(); const t = setTimeout(()=>c.abort(), timeout);
   try { const r = await fetch(u, {signal:c.signal, headers:{"User-Agent":"Mozilla/5.0"}}); return await r.text(); }

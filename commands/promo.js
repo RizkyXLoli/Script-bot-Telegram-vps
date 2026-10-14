@@ -1,8 +1,5 @@
 "use strict";
-// Promo terjadwal khusus owner. Bot kirim pesan otomatis tiap X menit ke chat
-// tempat perintah dibuat (pribadi/grup, TG/WA).
-//   /promo 60 Halo guys, jangan lupa mampir!   -> tiap 60 menit
-//   /promo list | /promo hapus <id> | /promo clear
+
 const store = require("../db/store");
 
 function fmtNext(ts) {

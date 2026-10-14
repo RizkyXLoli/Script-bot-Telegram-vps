@@ -1,5 +1,5 @@
 "use strict";
-// Fun: quotes, jokes, fakta, pantun, tebak-tebakan, dadu, koin, suit, ramal, absen harian
+
 const QUOTES = ["Jangan menyerah, hari buruk bukan hidup yang buruk.","Kode yang bagus ditulis untuk dibaca manusia.","Sedikit kemajuan tiap hari tetap kemajuan.","Fokus pada yang bisa kamu kontrol.","Istirahat bukan menyerah."];
 const JOKES = ["Kenapa programmer benci alam? Terlalu banyak bug.","Kenapa komputer dingin? Jendelanya terbuka.","Apa kata server ke client? Aku selalu mendengarkanmu.","Kenapa WiFi putus? Dia butuh ruang.","Programmer: mesin pengubah kopi jadi kode."];
 const FAKTA = ["Madu tidak pernah basi.","Gurita punya tiga jantung.","Pisang mengapung di air.","Cahaya butuh 8 menit dari Matahari ke Bumi.","Otak memakai ~20% energi tubuh."];

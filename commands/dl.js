@@ -33,7 +33,7 @@ async function doDownload(ctx, url, asMp3) {
     else if (/file tidak ketemu|larger than|max-filesize/i.test(raw)) msg = "Video terlalu besar (di atas 150 MB) atau gagal diambil.";
     await reply("Gagal: " + msg);
   } finally {
-    dl.safeUnlink(file); // file VPS langsung dihapus
+    dl.safeUnlink(file); 
   }
 }
 

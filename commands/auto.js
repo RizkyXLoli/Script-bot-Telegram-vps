@@ -1,10 +1,5 @@
 "use strict";
-// Menu owner /auto: pesan otomatis jadwal sholat + libur nasional per chat (grup TG/WA).
-//   /auto                      -> status chat ini
-//   /auto sholat on|off        -> aktif/matikan pengingat tiap waktu sholat
-//   /auto zona wib|wita|wit    -> pilih zona (kota: Jakarta/Makassar/Jayapura)
-//   /auto libur on|off         -> aktif/matikan ucapan libur nasional (API hari-libur nasional)
-// Zona->kota: wib=Jakarta, wita=Makassar, wit=Jayapura.
+
 const store = require("../db/store");
 const ZONES = { wib: "Jakarta", wita: "Makassar", wit: "Jayapura" };
 

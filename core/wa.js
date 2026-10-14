@@ -1,6 +1,5 @@
 "use strict";
-// WhatsApp via Baileys: login QR code (terminal) atau pairing code (8 digit).
-// Env: WA_ENABLED=1, WA_LOGIN=qr|pair, WA_PAIR_NUMBER=628xx (tanpa +, utk pair), WA_SESSION_DIR
+
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -35,13 +34,13 @@ async function startWA(onMessage, onFile, opts) {
   sock.ev.on("connection.update", async (u) => {
     const { connection, lastDisconnect, qr } = u;
     if (qr && loginMode === "qr") {
-      // 1) QR besar di terminal/log (mudah scan dari layar)
+      
       try {
         const qt = require("qrcode-terminal");
         qt.generate(qr, { small: false });
       } catch { try { require("qrcode-terminal").generate(qr, { small: true }); } catch {} }
       console.log("\n===== SCAN QR WHATSAPP DI ATAS =====\nWA > Perangkat Tertaut > Tautkan perangkat\n");
-      // 2) simpan PNG + kirim ke Telegram owner
+      
       try {
         const qrcode = require("qrcode");
         const png = path.join(sessDir, "wa-qr.png");
@@ -121,7 +120,7 @@ async function startWA(onMessage, onFile, opts) {
           await onFile({ ...ctx, filePath: tmp, name });
           try { fs.unlinkSync(tmp); } catch {}
           if (text.trim() && !text.startsWith("/")) {
-            // caption berupa perintah /tanya dsb diproses sebagai pesan juga
+            
           } else if (text.trim()) { await onMessage(ctx); }
           continue;
         }

@@ -218,7 +218,7 @@ function getOwnerCreds(ownerIds) {
     const u = d.prepare("SELECT * FROM users WHERE id = ? AND api_key IS NOT NULL").get(id);
     if (u && u.api_key) return u;
   }
-  // fallback: user mana pun yang sudah setup AI
+  
   return d.prepare("SELECT * FROM users WHERE api_key IS NOT NULL LIMIT 1").get() || null;
 }
 module.exports = { getUser, setUser, tmpGet, tmpSet, pushHistory, getHistory, clearHistory, setPending, getPending, clearPending, clearPendingExcept, sweepExpired, bumpStat, getStats, addSchedule, listSchedules, deleteSchedule, clearSchedules, dueSchedules, bumpSchedule, getOwnerCreds, getAuto, setAuto, listAuto };

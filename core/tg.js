@@ -78,7 +78,7 @@ async function startTG(onMessage, onFile) {
           else await ctx.replyWithVideo(new (require("grammy").InputFile)(fp), { caption: (cap || "").slice(0, 1000) });
         },
         sendAlbum: async (items) => {
-          // items: [{img, caption}] -> 1 bubble album (max 10 per grup)
+          
           const fs2 = require("fs"), { InputFile } = require("grammy");
           for (let i = 0; i < items.length; i += 10) {
             const batch = items.slice(i, i + 10).map((it, j) => {

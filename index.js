@@ -11,11 +11,11 @@ const animeCmd = require("./commands/anime");
 const { chatReply } = ai;
 
 const PREFIX = process.env.PREFIX || "/";
-const OWNER = process.env.OWNER_ID || ""; // id owner, mis. wa:628xx atau tg:12345
+const OWNER = process.env.OWNER_ID || ""; 
 const OWNERS = (process.env.OWNER_IDS || OWNER).split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
 function isOwner(ctx) {
   if (ctx.senderUser && OWNERS.some((o) => o.replace(/^@/,"").toLowerCase() === ctx.senderUser)) return true;
-  if (!OWNERS.length) return true; // belum diset: izinkan semua (mode setup awal)
+  if (!OWNERS.length) return true; 
   if (OWNERS.includes(ctx.userId)) return true;
   if (ctx.platform === "wa" && OWNERS.some((o) => o.startsWith("wa:") && ctx.userId.includes(o.slice(3)))) return true;
   return false;
@@ -93,7 +93,7 @@ async function onMessage(ctx) {
   }
 
   if (ctx.text && !text.startsWith("/")) {
-    if (ctx.isGroup) return; // grup: diam kecuali ada perintah /ai
+    if (ctx.isGroup) return; 
     try { await chatReply(ctx, ctx.text); }
     catch (e) { await reply("AI error: " + e.message); }
     return;
@@ -138,7 +138,7 @@ async function onFile(ctx) {
     await reply("File kebesaran, maksimal 150 MB. Tidak disimpan.");
     return;
   }
-  // Video yang dikirim user -> konversi ke MP3 di VPS, kirim balik, hapus keduanya
+  
   if (/\.(mp4|mov|mkv|webm|avi|3gp|m4v)$/i.test(name || "")) {
     const dl = require("./services/downloader");
     await reply("Video diterima, lagi dikonversi ke MP3...");

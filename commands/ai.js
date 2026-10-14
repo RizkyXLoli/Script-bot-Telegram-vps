@@ -151,7 +151,7 @@ async function handle(ctx) {
     return reply(out.slice(0, 4000));
   }
 
-  return null; // bukan command AI
+  return null; 
 }
 
 async function handleSetupFlow(ctx) {
