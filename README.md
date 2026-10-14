@@ -24,6 +24,11 @@ File & dokumen:
 
 Anime:
 - /anime [jumlah] — rilisan ongoing terbaru Samehadaku (gambar + judul + link, 1 album)
+- /wallpaper [jumlah 1-5] — wallpaper anime random (alias: /wp)
+
+Stiker:
+- Kirim gambar + caption /stiker [atas | bawah] — jadi sticker webp + teks meme (alias: /sticker, /smeme)
+- Contoh: kirim foto + caption "/stiker halo | apa kabar"
 
 Tools:
 - /kalk 7+2 — kalkulator(biar tidak gblk kayak prabowo
@@ -48,14 +53,28 @@ Grup & jadwal:
 - /auto zona wib|wita|wit — pilih zona waktu
 - /auto libur on|off — ucapan libur nasional
 
+Moderasi grup (kirim dari grup target, khusus owner):
+- /mod — status + bantuan perintah
+- /mod on|off — aktif/matikan filter kata berbahaya
+- /mod tambah/hapus/list/clear <kata> — kelola kata berbahaya
+- /mod batas <1-10> — peringatan sebelum kick (default 3)
+- /mod pesan <teks> — custom pesan peringatan (pakai @nama @hitung @batas)
+- /mod unwarn — reply pesan pelanggar untuk reset hitungan
+- /mod welcome on|off — sambutan member baru
+- /mod setwelcome <teks> — teks sambutan (pakai @nama)
+- /mod setimg <link> — gambar anime untuk welcome
+- Pelanggar: peringatan 1/3, 2/3, ke-3 = kick otomatis (bot harus admin)
+
 Lainnya:
 - /ping — cek hidup
 - /id — lihat ID WhatsApp/Telegram kamu (untuk daftar owner)
 - /help /menu /start — bantuan
 
-Owner (khusus owner):
-- /owner stats — statistik pemakaian AI
+Owner (khusus owner, ketik /owner — menu bernomor 1-15):
+- /ai setup/status/ganti/reset, /model, /lupa — kelola AI
 - /sh <perintah> — remote VPS (contoh: /sh df -h)
+- /promo, /auto, /mod — jadwal, pesan otomatis, moderasi grup
+- /owner stats — statistik pemakaian AI
 
 ## Pasang
 
