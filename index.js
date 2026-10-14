@@ -23,8 +23,10 @@ function isOwner(ctx) {
 }
 
 function normalize(text) {
-  if (/^[!.\/]/.test(text)) return "/" + text.slice(1);
-  return text;
+  let t = (text || "").trim();
+  t = t.replace(/^([!./]\w+)@\S+/i, "$1"); // /menu@namabot -> /menu
+  if (/^[!./]/.test(t)) return "/" + t.slice(1);
+  return t;
 }
 
 async function onMessage(ctx) {
@@ -80,8 +82,8 @@ async function onMessage(ctx) {
 
   if (text === "/ping") return reply("Hidup! Bot WA+Telegram AI.");
   if (text === "/id") return reply("ID kamu: " + userId);
-  if (text === "/help" || text === "/menu") return reply(HELP);
-  if (text === "/start") return reply("Halo! Ketik /ai setup untuk hubungkan AI-mu, atau /help untuk daftar perintah.");
+  if (/^\/(help|menu)(\s|$)/i.test(text)) return reply(HELP);
+  if (/^\/start(\s|$)/i.test(text)) return reply(`👋 *Halo, selamat datang di Elaina Bot!*\n━━━━━━━━━━━━━━━\n🤖 Asisten AI + downloader + tools serba bisa.\n\n📖 Ketik /menu untuk daftar perintah lengkap.\n⚙️ Owner: ketik /ai setup untuk hubungkan AI-mu.`);
 
   const aiQ = text.replace(/^\/ai\s*/i, "");
   if (/^\/ai(\s|$)/i.test(text) && aiQ && !/^(setup|status|ganti|reset)\b/i.test(aiQ)) {
@@ -192,53 +194,62 @@ async function onFile(ctx) {
   await reply(`File "${name}" tersimpan (${(size / 1048576).toFixed(1)} MB). Gunakan /tanya >pertanyaan< untuk analisis file.`);
 }
 
-const OWNER_MENU = `MENU OWNER (khusus owner)
-1. /ai setup — hubungkan AI (pilih provider, model, API key)
-2. /ai status — lihat AI aktifmu
-3. /ai ganti — ganti model
-4. /ai reset — hapus key + riwayat
-5. /model — sama dengan /ai ganti
-6. /lupa — hapus riwayat chat
-7. /sh <perintah> — remote VPS (contoh: /sh df -h)
-8. /promo <menit> <pesan> — promo terjadwal ke chat ini (contoh: /promo 60 Halo guys!)
-9. /promo list/hapus/clear — kelola jadwal promo
-10. /auto — status pesan otomatis grup ini (sholat + libur)
-11. /auto sholat on|off — aktif/matikan pengingat tiap waktu sholat
-12. /auto zona wib|wita|wit — pilih zona (Jakarta/Makassar/Jayapura)
-13. /auto libur on|off — aktif/matikan ucapan libur nasional
-14. /mod — moderasi grup (filter kata, warn 3x=kick, welcome+gambar)
-15. /owner stats — statistik pemakaian AI`;
+const OWNER_MENU = `👑 *MENU OWNER*
+━━━━━━━━━━━━━━━
+*🤖 Kelola AI*
+/ai setup — hubungkan AI (pilih provider, model, API key)
+/ai status — lihat AI yang aktif
+/ai ganti — ganti model AI
+/ai reset — hapus API key + riwayat chat
+/model — sama dengan /ai ganti
+/lupa — hapus riwayat chat
 
-const HELP = `MENU ANGGOTA (semua bisa pakai)
-1. kirim file (.log .txt .docx .pdf .csv .json gambar) — langsung diringkas
-2. kirim file (max 150 MB, selain APK) lalu /tanya >soal< dalam 3 menit — file+soal dikirim ke AI bersamaan, file dihapus sesudahnya
-3. kirim video (.mp4 .mov .mkv .webm) — otomatis dikonversi ke MP3 di VPS, dikirim balik, video+mp3 langsung dihapus
-4. /tanya >soal< — tanya soal file yang baru dikirim
-5. /dl <link> — download video (bisa juga kirim link langsung, otomatis)
-6. YT ke MP3: kirim link youtube + tulis "jadi mp3" — atau /mp3 <link>
-7. /ping — cek hidup
-8. /help — pesan ini
+*🖥️ VPS & Grup*
+/sh <perintah> — jalankan perintah di VPS (cth: /sh df -h)
+/promo <menit> <pesan> — kirim promo terjadwal ke chat ini
+/promo list | hapus | clear — kelola jadwal promo
+/auto — status pengingat otomatis grup ini
+/auto sholat on|off — pengingat tiap waktu sholat
+/auto zona wib|wita|wit — pilih zona waktu
+/auto libur on|off — ucapan libur nasional
+/mod — moderasi grup (filter kata, warn 3x = kick, welcome)
+/owner stats — statistik pemakaian AI`;
 
-Tools:
-9. /kalk 12*8+5 — kalkulator
-10. /cuaca Jakarta — info cuaca
-11. /tr en halo — translate
-12. /wiki Soekarno — Wikipedia
-13. /qr <teks> — link gambar QR
-14. /short <link> — perpendek link
-15. /jam wib — jam dunia
-16. /sholat Jakarta — jadwal sholat
+const HELP = `🤖 *MENU ELAINA BOT*
+━━━━━━━━━━━━━━━
+*📁 AI + File*
+• Kirim file (.log .txt .docx .pdf .csv .json / gambar) — langsung diringkas AI
+• Kirim file (maks 150 MB, selain APK) lalu /tanya >pertanyaan< dalam 3 menit
+• /tanya >pertanyaan< — tanya soal file yang baru dikirim
 
-Fun:
-17. /quote /joke /fakta /pantun
-18. /dadu /koin /suit batu
-19. /ramal /tebak /jawab /nama Budi
-20. /anime [jumlah] — rilisan ongoing terbaru Samehadaku (gambar+judul+link)
-21. /wallpaper [jumlah 1-5] — wallpaper anime random (tiap request beda, alias: /wp)
-22. kirim gambar + caption /stiker [atas | bawah] — jadi sticker + teks meme
+*🎬 Download & Musik*
+• /dl <link> — download video (atau kirim link langsung)
+• Kirim link YouTube + tulis "jadi mp3" — atau /mp3 <link>
 
-Khusus owner:
-/owner — menu owner`;
+*🛠️ Tools*
+• /kalk 12*8+5 — kalkulator
+• /cuaca Jakarta — info cuaca terkini
+• /tr en halo apa kabar — translate ke Inggris
+• /wiki Soekarno — ringkasan Wikipedia
+• /qr <teks> — buat gambar kode QR
+• /short <link> — perpendek URL
+• /jam wib — jam dunia (wib/wita/wit/london/tokyo/mekah)
+• /sholat Jakarta — jadwal sholat hari ini
+
+*🎉 Fun*
+• /quote /joke /fakta /pantun — hiburan teks
+• /dadu /koin /suit batu — permainan
+• /ramal /tebak /jawab /nama Budi — ramalan & kuis
+• /anime [jumlah] — rilisan ongoing Samehadaku
+• /wallpaper [1-5] — wallpaper anime random (alias /wp)
+• Kirim gambar + caption /stiker [atas | bawah] — jadi stiker meme
+
+*ℹ️ Lainnya*
+• /ping — cek bot hidup
+• /id — lihat ID kamu
+• /menu — tampilkan menu ini
+━━━━━━━━━━━━━━━
+👑 Khusus owner: ketik /owner`;
 
 async function main() {
   const { startTG } = require("./core/tg");

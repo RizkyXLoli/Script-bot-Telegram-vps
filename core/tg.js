@@ -17,6 +17,18 @@ async function startTG(onMessage, onFile) {
   const bot = new Bot(token);
 
   const { InlineKeyboard } = require("grammy");
+  function tgFmt(s) {
+    // Convert WA-style *bold* to Telegram HTML <b>, escape the rest
+    let t = String(s).slice(0, 4000);
+    const ph = [];
+    t = t.replace(/\*([^*\n]+)\*/g, (_, inner) => {
+      ph.push(inner);
+      return `\u0000B${ph.length - 1}\u0000`;
+    });
+    t = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    t = t.replace(/\u0000B(\d+)\u0000/g, (_, i) => `<b>${ph[Number(i)].replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</b>`);
+    return t;
+  }
   function rich(toReply) {
     return async (t) => {
       if (t && typeof t === "object" && t.buttons) {
@@ -25,9 +37,9 @@ async function startTG(onMessage, onFile) {
           for (const b of row) kb.text(b.text, b.data);
           kb.row();
         }
-        return toReply(String(t.text).slice(0, 4000), { reply_markup: kb });
+        return toReply(tgFmt(t.text), { reply_markup: kb });
       }
-      return toReply(String(t).slice(0, 4000));
+      return toReply(tgFmt(t), {});
     };
   }
 
@@ -45,7 +57,7 @@ async function startTG(onMessage, onFile) {
       try { await ctx.editMessageReplyMarkup({ reply_markup: undefined }); } catch {}
       await onMessage({
         userId, platform: "tg", text, isGroup: false, senderName, senderUser,
-        reply: rich((m, extra) => ctx.reply(m.slice(0, 4000), extra)),
+        reply: rich((m, extra) => ctx.reply(tgFmt(String(m).slice(0, 4000)), { parse_mode: "HTML", ...(extra || {}) })),
         replyFile: async () => {},
         viaButton: true,
       });
@@ -64,7 +76,7 @@ async function startTG(onMessage, onFile) {
       await onMessage({
         userId, platform: "tg", text, isGroup, senderName, senderUser,
         chatId: String(ctx.chat.id),
-        reply: rich((m, extra) => ctx.reply(m.slice(0, 4000), { reply_parameters: { message_id: ctx.message.message_id }, ...(extra || {}) })),
+        reply: rich((m, extra) => ctx.reply(tgFmt(String(m).slice(0, 4000)), { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id }, ...(extra || {}) })),
         kickUser: async () => {
           await ctx.api.banChatMember(ctx.chat.id, ctx.from.id);
           try { await ctx.api.unbanChatMember(ctx.chat.id, ctx.from.id); } catch {}
