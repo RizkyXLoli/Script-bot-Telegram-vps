@@ -83,6 +83,12 @@ async function onMessage(ctx) {
   if (text === "/ping") return reply("Hidup! Bot WA+Telegram AI.");
   if (text === "/id") return reply("ID kamu: " + userId);
   if (/^\/(help|menu)(\s|$)/i.test(text)) return reply(HELP);
+  if (/^\/panduan(\s|$)/i.test(text)) {
+    const arg = text.split(/\s+/)[1] || "";
+    const key = (arg.match(/^(\d)$/) || [])[1];
+    const body = key && GUIDE[key] ? GUIDE[key] : GUIDE_ALL;
+    return reply("```" + body + "```");
+  }
   if (/^\/start(\s|$)/i.test(text)) return reply(`👋 *Halo, selamat datang di Elaina Bot!*\n━━━━━━━━━━━━━━━\n🤖 Asisten AI + downloader + tools serba bisa.\n\n📖 Ketik /menu untuk daftar perintah lengkap.\n⚙️ Owner: ketik /ai setup untuk hubungkan AI-mu.`);
 
   const aiQ = text.replace(/^\/ai\s*/i, "");
@@ -215,6 +221,60 @@ const OWNER_MENU = `MENU OWNER
 14. /mod untuk moderasi grup (filter kata, warn 3x = kick, welcome)
 15. /owner stats untuk statistik pemakaian AI`;
 
+// Panduan pemakaian per fitur (dipanggil /panduan atau /panduan <nomor>).
+const GUIDE = {
+  1: `[1] AI dan File
+Kirim file langsung ke chat (tanpa perintah):
+  .log .txt .docx .pdf .csv .json / gambar
+Bot merangkum isinya lalu membalas.
+
+Kalau mau tanya lanjutan soal file itu:
+  1. kirim filenya
+  2. ketik /tanya apa isi kesimpulannya?
+File disimpan 3 menit, maks 150 MB, APK ditolak.`,
+  2: `[2] Download dan Musik
+/dl <link>
+  contoh: /dl https://youtu.be/xxxx
+  atau cukup kirim link-nya (bot auto deteksi)
+  Dukung: YouTube, TikTok, IG, FB, X.
+
+/mp3 <link>
+  atau kirim link YouTube lalu tulis: jadi mp3`,
+  3: `[3] Tools
+/kalk 12*8+5        kalkulator
+/cuaca Jakarta      cuaca terkini
+/tr en halo apa kabar   translate (en/id/jp/ar/...)
+/wiki Soekarno      ringkasan Wikipedia
+/qr teks            gambar QR
+/short <url>        perpendek URL
+/jam wib            wib/wita/wit/london/tokyo/mekah
+/sholat Jakarta     jadwal sholat hari ini`,
+  4: `[4] Fun dan Anime
+/quote /joke /fakta /pantun    hiburan teks
+/dadu /koin /suit batu         permainan
+/ramal /tebak /jawab /nama Budi   ramalan & kuis
+
+/anime 5               rilisan ongoing
+/anime summer 2019     per musim
+/anime 12 juni 2025    rilis di tanggal itu
+/anime juli 2025       sebulan penuh
+/wallpaper 1-5         wallpaper (alias /wp)
+/stiker                kirim gambar + caption ini`,
+  5: `[5] Lainnya
+/ping     cek bot hidup
+/id       lihat ID kamu
+/menu     daftar perintah
+/panduan  penjelasan tiap fitur
+
+Owner saja:
+/owner         menu owner
+/owner stats   statistik pemakaian AI
+/ai setup      hubungkan AI
+/sh <perintah> jalankan perintah shell`,
+};
+
+const GUIDE_ALL = Object.keys(GUIDE).sort().map((k) => GUIDE[k]).join("\n\n");
+
 // Menu dibungkus ``` supaya tampil monospace: di Telegram jadi <pre>,
 // di WhatsApp jadi font monospace. Baris dijaga <= 42 karakter agar tidak
 // wrap di layar HP (kalau wrap, kolom nomor jadi tidak rata).
@@ -256,6 +316,7 @@ const HELP = "```" + `MENU ELAINA BOT
 22. /ping
 23. /id
 24. /menu
+25. /panduan  cara pakai tiap fitur
 
 Owner: /owner` + "```";
 

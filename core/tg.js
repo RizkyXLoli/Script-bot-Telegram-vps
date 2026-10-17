@@ -46,6 +46,9 @@ async function startTG(onMessage, onFile) {
         }
         return toReply(tgFmt(t.text), { reply_markup: kb });
       }
+      // tgFmt HANYA di sini: callback pemanggil sudah memakai parse_mode HTML,
+      // jadi jangan memformat dua kali (kalau dobel, <pre>/<b> ikut ter-escape
+      // dan user melihat tag mentah).
       return toReply(tgFmt(t), {});
     };
   }
@@ -64,7 +67,7 @@ async function startTG(onMessage, onFile) {
       try { await ctx.editMessageReplyMarkup({ reply_markup: undefined }); } catch {}
       await onMessage({
         userId, platform: "tg", text, isGroup: false, senderName, senderUser,
-        reply: rich((m, extra) => ctx.reply(tgFmt(String(m).slice(0, 4000)), { parse_mode: "HTML", ...(extra || {}) })),
+        reply: rich((m, extra) => ctx.reply(String(m).slice(0, 4000), { parse_mode: "HTML", ...(extra || {}) })),
         replyFile: async () => {},
         viaButton: true,
       });
@@ -83,7 +86,7 @@ async function startTG(onMessage, onFile) {
       await onMessage({
         userId, platform: "tg", text, isGroup, senderName, senderUser,
         chatId: String(ctx.chat.id),
-        reply: rich((m, extra) => ctx.reply(tgFmt(String(m).slice(0, 4000)), { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id }, ...(extra || {}) })),
+        reply: rich((m, extra) => ctx.reply(String(m).slice(0, 4000), { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id }, ...(extra || {}) })),
         kickUser: async () => {
           await ctx.api.banChatMember(ctx.chat.id, ctx.from.id);
           try { await ctx.api.unbanChatMember(ctx.chat.id, ctx.from.id); } catch {}
