@@ -245,7 +245,7 @@ const HELP = `MENU ELAINA BOT
     musim: winter = Musim Dingin, spring = Musim Semi, summer = Musim Panas, fall = Musim Gugur
 19. /anime tanggal bulan tahun untuk anime yang rilis di tanggal itu (contoh: /anime 12 juni 2025)
     /anime bulan tahun untuk sebulan penuh (contoh: /anime juli 2025), juga bisa 12/6/2025
-    semua data dari situs sumber (arsip tanggal Samehadaku/Oploverz/Anoboy), tanpa AniList
+    AniList hanya dipakai sebagai daftar judul; cover/link/info dari situs sumber
 20. /wallpaper 1-5 untuk wallpaper anime random (alias /wp)
 21. Kirim gambar + caption /stiker atas bawah untuk jadi stiker meme
 
