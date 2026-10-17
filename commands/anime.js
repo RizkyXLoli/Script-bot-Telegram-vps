@@ -119,45 +119,90 @@ function qof(s) {
   return { t: toks(s), p: properNouns(s) };
 }
 
-async function shSearch(title) {
-  try {
-    const q = encodeURIComponent(title.replace(/[^a-zA-Z0-9 ]/g, " ").trim());
-    const html = await fetchText(`${HOME}?s=${q}&post_type=anime`);
-    const out = [];
-    const arts = html.match(/<article class="bs"[\s\S]*?<\/article>/g) || [];
-    for (const a of arts) {
-      const m = a.match(/<a href="(https?:\/\/samehadaku\.[^"]+\/anime\/[^"]+)"[^>]*title="([^"]+)"/i)
-        || a.match(/<a href="([^"]+)"[^>]*title="([^"]+)"/i);
-      if (m) out.push({ judul: m[2].replace(/&amp;/g, "&").trim(), link: m[1], src: "Samehadaku" });
-    }
-    return out;
-  } catch { return []; }
+// ---------- sumber link tonton ----------
+// Semua sumber dibaca server-side (HTML atau JSON), tanpa JS/Turnstile.
+// Tema "article.bs" dipakai Samehadaku, Oploverz, Anoboy; Otakudesu pakai <h2><a>;
+// Nimegami (Next.js) punya kartu sendiri; Mirainime menyediakan JSON /search/live.
+function bsArticles(html, pathRe) {
+  const out = [];
+  const arts = html.match(/<article class="bs"[\s\S]*?<\/article>/g) || [];
+  for (const a of arts) {
+    const m = a.match(/<a href="([^"]+)"[^>]*title="([^"]+)"/i);
+    if (!m) continue;
+    if (pathRe && !pathRe.test(m[1])) continue;
+    out.push({ judul: m[2].replace(/&amp;/g, "&").trim(), link: m[1] });
+  }
+  return out;
 }
 
-async function otkSearch(title) {
+function otkRows(html) {
+  const out = [];
+  const rows = html.match(/<h2>\s*<a href="([^"]+\/anime\/[^"]+)"[^>]*>([\s\S]*?)<\/a>\s*<\/h2>/gi) || [];
+  for (const r of rows) {
+    const m = r.match(/href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!m) continue;
+    const judul = m[2].replace(/<[^>]+>/g, "").replace(/&#\d+;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+    out.push({ judul, link: m[1] });
+  }
+  return out;
+}
+
+function nimegamiCards(html) {
+  const out = [];
+  const arts = html.match(/<article class="anime-card[\s\S]*?<\/article>/g) || [];
+  for (const a of arts) {
+    const h = a.match(/<a[^>]*class="poster-link"[^>]*href="([^"]+)"/i) || a.match(/<a[^>]*href="([^"]+)"/i);
+    if (!h) continue;
+    const t = a.match(/aria-label="Lihat ([^"]+)"/i) || a.match(/class="card-title"[^>]*>([\s\S]*?)</i) || a.match(/alt="([^"]+)"/i);
+    if (!t) continue;
+    const link = /^https?:/i.test(h[1]) ? h[1] : "https://nimegami.id" + h[1];
+    out.push({ judul: t[1].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").trim(), link });
+  }
+  return out;
+}
+
+function mirainimeJson(txt) {
+  let arr;
+  try { arr = JSON.parse(txt); } catch { return []; }
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .filter((x) => x && x.url && (x.title || x.title_indonesian))
+    .map((x) => ({ judul: String(x.title_indonesian || x.title).replace(/\s*Sub Indo$/i, "").trim(), link: x.url }));
+}
+
+const WATCH_SOURCES = [
+  { name: "Samehadaku", url: (q) => `${HOME}?s=${q}&post_type=anime`, parse: (h) => bsArticles(h, /samehadaku\.[^/]+\/anime\//i) },
+  { name: "Otakudesu", url: (q) => `${OTK}?s=${q}&post_type=anime`, parse: otkRows },
+  { name: "Oploverz", url: (q) => `https://oploverz.ch/?s=${q}`, parse: (h) => bsArticles(h, /oploverz\.[^/]+\/series\//i) },
+  { name: "Anoboy", url: (q) => `https://anoboy.be/?s=${q}`, parse: (h) => bsArticles(h, /anoboy\.[^/]+\/anime\//i) },
+  { name: "Nimegami", url: (q) => `https://nimegami.id/anime/?q=${q}`, parse: nimegamiCards },
+  { name: "Mirainime", url: (q) => `https://mirainime.com/search/live?q=${q}`, parse: mirainimeJson },
+];
+const FALLBACK_SOURCES = ["Samehadaku", "Oploverz", "Mirainime"];
+
+function encTitle(title) {
+  return encodeURIComponent(String(title).replace(/[^a-zA-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim());
+}
+
+async function searchSource(src, title) {
   try {
-    const q = encodeURIComponent(title.replace(/[^a-zA-Z0-9 ]/g, " ").trim());
-    const html = await fetchText(`${OTK}?s=${q}&post_type=anime`);
-    const out = [];
-    const rows = html.match(/<h2>\s*<a href="(https?:\/\/otakudesu\.[^"]+\/anime\/[^"]+)"[^>]*>([\s\S]*?)<\/a>\s*<\/h2>/gi) || [];
-    for (const r of rows) {
-      const m = r.match(/href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
-      if (!m) continue;
-      const judul = m[2].replace(/<[^>]+>/g, "").replace(/&#\d+;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
-      out.push({ judul, link: m[1], src: "Otakudesu" });
-    }
-    return out;
+    const body = await fetchText(src.url(encTitle(title)));
+    return src.parse(body).map((c) => ({ ...c, src: src.name }));
   } catch { return []; }
 }
 
 const MIN_SCORE = 0.55;
+const STRONG = 0.8;
 
-// Cari link tonton di Samehadaku & Otakudesu, ambil kandidat dengan judul paling cocok.
-// Judul yang dicoba: romaji, english, dan sinonim (judul alternatif sering dipakai situs ID).
+// Cari link tonton di semua sumber, ambil kandidat dengan judul paling cocok.
+// Judul yang dicoba: romaji, english, sinonim, lalu versi 3 kata pertama.
+// Berhenti lebih awal begitu ada kandidat yang sangat cocok (hemat request).
 async function resolveWatch(m) {
   const t = m.title || {};
-  const titles = [...new Set([t.romaji, t.english, ...(m.synonyms || [])].filter((s) => typeof s === "string" && s.trim().length > 2))];
-  if (!titles.length) return null;
+  const base = [...new Set([t.romaji, t.english, ...(m.synonyms || [])].filter((s) => typeof s === "string" && s.trim().length > 2))];
+  if (!base.length) return null;
+  const short = toks(base[0]).slice(0, 3).join(" ");
+  const titles = [...new Set(base.concat(short && short !== base[0].toLowerCase() ? [short] : []))];
   const queries = titles.map(qof).filter((q) => q.t.length);
   const key = "watch:" + titles.join("|").toLowerCase().slice(0, 300);
   const hit = cacheGet(key);
@@ -165,33 +210,34 @@ async function resolveWatch(m) {
 
   const seen = new Set();
   const cands = [];
-  for (const title of titles.slice(0, 3)) {
-    let [a, b] = await Promise.all([shSearch(title), otkSearch(title)]);
-    // judul panjang sering tidak ketemu; coba versi pendek (3 kata pertama)
-    if (!a.length && !b.length) {
-      const short = toks(title).slice(0, 3).join(" ");
-      if (short && short !== title.toLowerCase()) [a, b] = await Promise.all([shSearch(short), otkSearch(short)]);
+  for (const title of titles.slice(0, 4)) {
+    const lists = await Promise.all(WATCH_SOURCES.map((s) => searchSource(s, title)));
+    for (const list of lists) {
+      for (const c of list) {
+        if (seen.has(c.link)) continue;
+        seen.add(c.link);
+        c.score = scoreCand(queries, c.judul);
+        cands.push(c);
+      }
     }
-    for (const c of a.concat(b)) {
-      if (seen.has(c.link)) continue;
-      seen.add(c.link);
-      c.score = scoreCand(queries, c.judul);
-      cands.push(c);
-    }
+    cands.sort((x, y) => (y.score - x.score) || (toks(x.judul).length - toks(y.judul).length));
+    if (cands[0] && cands[0].score >= STRONG) break;
   }
-  cands.sort((x, y) => (y.score - x.score) || (toks(x.judul).length - toks(y.judul).length));
   const best = cands[0] && cands[0].score >= MIN_SCORE ? cands[0] : null;
   cacheSet(key, best);
   return best;
 }
 
-// Kalau judulnya tidak ada di kedua situs, jangan biarkan kosong: kasih link
-// pencarian supaya user tetap punya jalan.
+// Kalau judulnya tidak ada di sumber mana pun, jangan biarkan kosong: kasih
+// link pencarian supaya user tetap punya jalan.
 function searchLinks(m) {
   const t = String((m.title && (m.title.english || m.title.romaji)) || "").replace(/[^a-zA-Z0-9 ]/g, " ").trim();
   if (!t) return null;
-  const q = encodeURIComponent(t);
-  return { sh: `${HOME}?s=${q}&post_type=anime`, otk: `${OTK}?s=${q}&post_type=anime` };
+  const q = encTitle(t);
+  return FALLBACK_SOURCES.map((name) => {
+    const s = WATCH_SOURCES.find((x) => x.name === name);
+    return { src: name, url: s ? s.url(q) : "" };
+  }).filter((x) => x.url);
 }
 
 async function mapLimit(items, limit, fn) {
@@ -340,7 +386,7 @@ async function sendMediaList(ctx, media, opts) {
     if (!img) continue;
     const w = watches[i];
     const s = searches[i];
-    const linkLine = w ? `\nTonton (${w.src}): ${w.link}` : s ? `\nCari: ${s.sh}` : "";
+    const linkLine = w ? `\nTonton (${w.src}): ${w.link}` : s ? `\nCari: ${s[0].url}` : "";
     album.push({
       img,
       caption: `${mediaTitle(m)}\n${mediaInfo(m, opts.withFormat)}${linkLine}`.slice(0, 1000),
@@ -361,7 +407,7 @@ async function sendMediaList(ctx, media, opts) {
     const s = searches[i];
     let tail = "";
     if (w) tail = `\nTonton (${w.src}): ${w.link}`;
-    else if (s) tail = `\nBelum ada di Samehadaku/Otakudesu. Cari:\n${s.sh}\n${s.otk}`;
+    else if (s) tail = `\nBelum ada di ${WATCH_SOURCES.map((x) => x.name).join("/")}. Cari:\n${s.map((x) => `${x.src}: ${x.url}`).join("\n")}`;
     return `${i + 1}. ${mediaTitle(m)}\n${mediaInfo(m, opts.withFormat)}\n${m.siteUrl || ""}${tail}`.trim();
   }).join("\n\n").slice(0, 3800);
   await reply(`${opts.header}\n\n${lines}${opts.tip || ""}`);
@@ -502,4 +548,4 @@ async function handle(ctx) {
   return sendOngoing(ctx, Math.min(n, 10));
 }
 
-module.exports = { handle, _internals: { toks, properNouns, qof, scoreCand, resolveWatch, searchLinks, parseDateArgs, validDate, daysInMonth } };
+module.exports = { handle, _internals: { toks, properNouns, qof, scoreCand, resolveWatch, searchLinks, parseDateArgs, validDate, daysInMonth, WATCH_SOURCES, bsArticles, otkRows, nimegamiCards, mirainimeJson } };
