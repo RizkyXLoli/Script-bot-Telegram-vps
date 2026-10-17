@@ -464,6 +464,41 @@ async function sourceMeta(link) {
   } catch { return null; }
 }
 
+// og:image kadang bukan poster (logo situs, gambar default). Yang seperti itu
+// jangan dipakai sebagai cover di album.
+function isRealPoster(url) {
+  if (!url || !/^https?:/i.test(url)) return false;
+  return !/og-[a-z]+\.(png|jpe?g)$|logo|placeholder|noimg|default[-_]?(image|cover)|favicon/i.test(url);
+}
+
+// Cari poster + info dari situs sumber lain (Samehadaku paling lengkap) untuk
+// judul yang halaman sumbernya tidak menyediakan poster/info.
+async function otherSourceMeta(m, opts) {
+  const { needCover = false, needInfo = false, exclude = null } = opts || {};
+  const t = m.title || {};
+  const titles = [...new Set([t.romaji, t.english, ...(m.synonyms || [])].filter((s) => typeof s === "string" && s.trim().length > 2))];
+  const queries = titles.map(qof);
+  for (const title of titles.slice(0, 2)) {
+    const lists = await Promise.all(WATCH_SOURCES.map((s) => searchSource(s, title)));
+    const cands = [];
+    for (const list of lists) for (const c of list) {
+      if (exclude && c.link === exclude) continue;
+      cands.push({ ...c, score: scoreCand(queries, c.judul) });
+    }
+    cands.sort((a, b) => b.score - a.score);
+    for (const c of cands.slice(0, 4)) {
+      if (c.score < 0.55) break;
+      const meta = await sourceMeta(c.link);
+      if (!meta) continue;
+      const hasInfo = !!(meta.episodes || meta.season || meta.studio);
+      const hasCover = isRealPoster(meta.cover);
+      // hanya terima kalau memenuhi kebutuhan yang diminta
+      if ((needInfo && hasInfo) || (needCover && hasCover && !needInfo)) return meta;
+    }
+  }
+  return null;
+}
+
 // Ambil semua posting di tanggal itu dari 3 situs, buang judul episode dan
 // gabungkan per judul seri. Urut: judul yang muncul di lebih banyak sumber dulu.
 async function archiveDay(y, m, d) {
@@ -587,26 +622,44 @@ async function sendMediaList(ctx, media, opts) {
   // episode, musim, studio). AniList tidak ditampilkan sama sekali.
   const metas = await mapLimit(pairs, 4, ({ w }) => sourceMeta(w.link));
 
-  const infoLine = (meta, withFormat, srcName) => {
+  // Kalau halaman sumber tidak punya poster atau info lengkap (Nimegami /
+  // Mirainime sering begitu), lengkapi dari situs sumber lain supaya album
+  // tidak bolong dan baris info tidak kosong.
+  const alts = await mapLimit(pairs, 4, async ({ m, w }, i) => {
+    const own = metas[i] || {};
+    const needCover = !isRealPoster(own.cover);
+    const needInfo = !own.episodes || !own.season || !own.studio;
+    if (!needCover && !needInfo) return null;
+    return otherSourceMeta(m, { needCover, needInfo, exclude: w.link });
+  });
+
+  const pick = (k, i) => {
+    const own = metas[i] || {};
+    const alt = alts[i] || {};
+    if (k === "cover") return isRealPoster(own.cover) ? own.cover : (isRealPoster(alt.cover) ? alt.cover : own.cover || null);
+    return own[k] || alt[k] || null;
+  };
+
+  const infoLine = (i, withFormat) => {
     const bits = [];
-    if (meta && meta.type && withFormat) bits.push(meta.type);
-    if (meta && meta.episodes) bits.push(`${meta.episodes} ep`);
-    if (meta && meta.season) bits.push(meta.season);
-    if (meta && meta.studio) bits.push(meta.studio);
-    // tidak ada info dari halaman sumber -> tidak menampilkan angka dari AniList,
-    // cukup nama sumbernya supaya baris tidak kosong
-    if (!bits.length) bits.push(srcName);
+    const type = pick("type", i), eps = pick("episodes", i), season = pick("season", i), studio = pick("studio", i);
+    if (type && withFormat) bits.push(type);
+    if (eps) bits.push(`${eps} ep`);
+    if (season) bits.push(season);
+    if (studio) bits.push(studio);
+    // tidak ada info dari halaman sumber -> baris info dikosongkan (bukan diisi
+    // angka AniList); nama sumber sudah tampil di baris link
     return bits.join(" · ");
   };
 
   const album = [];
   const entries = [];
   pairs.forEach(({ m, w }, i) => {
-    const meta = metas[i];
-    const cap = `${mediaTitle(m)}\n${infoLine(meta, opts.withFormat, w.src)}\n▶ ${w.src}: ${w.link}`;
+    const info = infoLine(i, opts.withFormat);
+    const cap = `${mediaTitle(m)}${info ? "\n" + info : ""}\n▶ ${w.src}: ${w.link}`;
     entries.push(`${i + 1}. ${cap}`);
     if (opts.noCover) return;
-    const img = meta && meta.cover;
+    const img = pick("cover", i);
     if (img) album.push({ img, caption: cap.slice(0, 1000), _local: false });
   });
 
@@ -639,7 +692,6 @@ async function sendSeason(ctx, year, season, n) {
     header: (shown, pool) => `Anime Jepang ${SEASON_LABEL[season]} ${year} — ${shown} judul${pool > shown ? ` (dari ${pool}, hanya yang ada link tonton)` : ""}:`,
     withFormat: false,
     limit: n,
-    noCover: true,
   });
 }
 
@@ -782,4 +834,4 @@ async function handle(ctx) {
   return sendOngoing(ctx, Math.min(n, 10));
 }
 
-module.exports = { handle, _internals: { toks, properNouns, qof, scoreCand, resolveWatch, dayList, archiveDay, anilistByNames, stripEpisode, sourceMeta, parseSeriesInfo, parseDateArgs, validDate, daysInMonth, WATCH_SOURCES, bsArticles, otkRows, nimegamiCards, mirainimeJson } };
+module.exports = { handle, _internals: { toks, properNouns, qof, scoreCand, resolveWatch, dayList, archiveDay, anilistByNames, stripEpisode, sourceMeta, parseSeriesInfo, otherSourceMeta, isRealPoster, encTitle, parseDateArgs, validDate, daysInMonth, WATCH_SOURCES, bsArticles, otkRows, nimegamiCards, mirainimeJson } };
