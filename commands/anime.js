@@ -108,7 +108,9 @@ function scoreCand(queries, judul) {
     // "Dr. STONE" akan dianggap cocok dengan "Science Future Part 3".
     const shared = ct.filter((t) => q.t.includes(t));
     const sequelExtras = extra.filter((t) => SEQUEL.test(t));
-    if (shared.length === 1 && sequelExtras.length === 0 && shared[0].length >= 6 && q.p.includes(shared[0]) && candP.has(shared[0])) {
+    // Batasi juga panjang kandidat: "Katachi" tidak boleh cocok dengan
+    // "Koe no Katachi" hanya karena satu token sama.
+    if (shared.length === 1 && sequelExtras.length === 0 && ct.length <= q.t.length + 1 && shared[0].length >= 6 && q.p.includes(shared[0]) && candP.has(shared[0])) {
       best = Math.max(best, 0.62);
     }
   }
@@ -178,7 +180,6 @@ const WATCH_SOURCES = [
   { name: "Nimegami", url: (q) => `https://nimegami.id/anime/?q=${q}`, parse: nimegamiCards },
   { name: "Mirainime", url: (q) => `https://mirainime.com/search/live?q=${q}`, parse: mirainimeJson },
 ];
-const FALLBACK_SOURCES = ["Samehadaku", "Oploverz", "Mirainime"];
 
 function encTitle(title) {
   return encodeURIComponent(String(title).replace(/[^a-zA-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim());
@@ -228,17 +229,8 @@ async function resolveWatch(m) {
   return best;
 }
 
-// Kalau judulnya tidak ada di sumber mana pun, jangan biarkan kosong: kasih
-// link pencarian supaya user tetap punya jalan.
-function searchLinks(m) {
-  const t = String((m.title && (m.title.english || m.title.romaji)) || "").replace(/[^a-zA-Z0-9 ]/g, " ").trim();
-  if (!t) return null;
-  const q = encTitle(t);
-  return FALLBACK_SOURCES.map((name) => {
-    const s = WATCH_SOURCES.find((x) => x.name === name);
-    return { src: name, url: s ? s.url(q) : "" };
-  }).filter((x) => x.url);
-}
+// Judul tanpa link tonton tidak ditampilkan sama sekali (lihat sendMediaList),
+// jadi tidak perlu lagi link pencarian sebagai pengganti.
 
 async function mapLimit(items, limit, fn) {
   const out = new Array(items.length);
@@ -376,21 +368,27 @@ function genreLine(m) {
 
 async function sendMediaList(ctx, media, opts) {
   const { reply } = ctx;
-  const albumMax = Math.min(opts.albumMax || 10, 10);
+  const limit = Math.min(opts.limit || 5, 10);
   const watches = await mapLimit(media, 4, (m) => resolveWatch(m));
-  const searches = media.map((m, i) => (watches[i] ? null : searchLinks(m)));
+
+  // Hanya judul yang benar-benar punya halaman tonton yang ditampilkan.
+  // Tanpa link tonton, judulnya tidak dimasukkan ke chat (bukan cuma linknya).
+  const pairs = [];
+  for (let i = 0; i < media.length && pairs.length < limit; i++) {
+    if (watches[i]) pairs.push({ m: media[i], w: watches[i] });
+  }
+  if (!pairs.length) {
+    await reply(opts.emptyMsg || `Tidak ada dari ${media.length} judul itu yang punya link tonton di sumber langganan.`);
+    return true;
+  }
 
   const album = [];
-  for (let i = 0; i < media.length && album.length < albumMax; i++) {
-    const m = media[i];
+  for (const { m, w } of pairs) {
     const img = m.coverImage && m.coverImage.large;
     if (!img) continue;
-    const w = watches[i];
-    const s = searches[i];
-    const linkLine = w ? `\n▶ ${w.src}: ${w.link}` : s ? `\n🔎 ${s[0].url}` : "";
     album.push({
       img,
-      caption: `${mediaTitle(m)}\n${mediaInfo(m, opts.withFormat)}${genreLine(m)}${linkLine}`.slice(0, 1000),
+      caption: `${mediaTitle(m)}\n${mediaInfo(m, opts.withFormat)}${genreLine(m)}\n▶ ${w.src}: ${w.link}`.slice(0, 1000),
       _local: false,
     });
   }
@@ -403,20 +401,18 @@ async function sendMediaList(ctx, media, opts) {
     }
   }
 
-  const entries = media.map((m, i) => {
-    const w = watches[i];
-    const s = searches[i];
-    const tail = w ? `▶ ${w.src}: ${w.link}` : s ? `🔎 belum ada — cari: ${s[0].url}` : "";
-    return `${i + 1}. ${mediaTitle(m)}\n${mediaInfo(m, opts.withFormat)}${genreLine(m)}${tail ? "\n" + tail : ""}`;
-  });
+  const entries = pairs.map(({ m, w }, i) =>
+    `${i + 1}. ${mediaTitle(m)}\n${mediaInfo(m, opts.withFormat)}${genreLine(m)}\n▶ ${w.src}: ${w.link}`
+  );
 
+  const header = opts.header(pairs.length, media.length);
   // Kirim bertahap (batas keras Telegram 4096) supaya tidak ada judul yang terpotong
   const LIMIT = 3400;
   let buf = "";
   let first = true;
   const flush = async () => {
     if (!buf.trim()) return;
-    await reply((first ? opts.header + "\n\n" : "") + buf.trimEnd());
+    await reply((first ? header + "\n\n" : "") + buf.trimEnd());
     first = false;
     buf = "";
   };
@@ -434,14 +430,18 @@ async function sendMediaList(ctx, media, opts) {
 async function sendSeason(ctx, year, season, n) {
   await ctx.reply(`Mencari anime ${SEASON_LABEL[season]} ${year}...`);
   let media;
-  try { media = await seasonList(year, season, Math.min(n + 5, 30)); }
+  try { media = await seasonList(year, season, Math.min(n * 3 + 5, 50)); }
   catch (e) { await ctx.reply("Gagal ambil data musim: " + e.message); return true; }
   // film / special tidak dihitung sebagai daftar serial musim; ambil ekstra
   // supaya jumlah yang diminta tetap terpenuhi setelah difilter
-  media = media.filter((m) => !["MUSIC", "MOVIE", "SPECIAL"].includes(m.format)).slice(0, n);
+  media = media.filter((m) => !["MUSIC", "MOVIE", "SPECIAL"].includes(m.format)).slice(0, Math.min(n * 3, 30));
   if (!media.length) { await ctx.reply(`Tidak ada anime ${SEASON_LABEL[season]} ${year} ditemukan.`); return true; }
   await ctx.reply(`Mencari link tonton untuk ${media.length} anime...`);
-  return sendMediaList(ctx, media, { header: `Anime ${SEASON_LABEL[season]} ${year} (populer):`, withFormat: false });
+  return sendMediaList(ctx, media, {
+    header: (shown, pool) => `Anime ${SEASON_LABEL[season]} ${year} — ${shown} judul${pool > shown ? ` (dari ${pool}, hanya yang ada link tonton)` : ""}:`,
+    withFormat: false,
+    limit: n,
+  });
 }
 
 // ---------- mode: tanggal / bulan ----------
@@ -477,9 +477,8 @@ async function sendRange(ctx, p, n, nGiven) {
   });
   // bulan: tetap urut popularitas (seperti mode musim), tanggal tetap tampil per judul
   total = media.length;
-  // satu tanggal: tampilkan semua yang ada (maks 15); sebulan: 10 teratas per tanggal
-  const cap = nGiven ? n : isMonth ? 10 : Math.min(total, 15);
-  media = media.slice(0, cap);
+  // kandidat yang dicek: sejumlah mungkin (maks 15), lalu diambil yang punya link
+  media = media.slice(0, Math.min(total, 15));
 
   if (!media.length) {
     await ctx.reply(isMonth
@@ -487,9 +486,15 @@ async function sendRange(ctx, p, n, nGiven) {
       : `Tidak ada anime yang tercatat rilis ${label}.\nCoba /anime ${MONTH_NAME[p.month].toLowerCase()} ${p.year} untuk lihat sebulan penuh.`);
     return true;
   }
-  const shown = media.length < total ? ` — menampilkan ${media.length} dari ${total}` : ` — ${total} judul`;
+  const want = nGiven || 5;
   const tip = !isMonth && total <= 2 ? `\n\nCatatan: AniList cuma mencatat ${total} judul untuk tanggal ini. Coba /anime ${MONTH_NAME[p.month].toLowerCase()} ${p.year} untuk lihat sebulan penuh.` : "";
-  return sendMediaList(ctx, media, { header: `Anime rilis ${label} (populer)${shown}:`, withFormat: true, tip });
+  return sendMediaList(ctx, media, {
+    header: (shown, pool) => `Anime rilis ${label} — ${shown} judul${pool > shown ? ` (dari ${pool} kandidat, hanya yang ada link tonton)` : ""}:`,
+    withFormat: true,
+    limit: want,
+    tip,
+    emptyMsg: `Tidak ada dari ${total} judul yang rilis ${label} yang punya halaman tonton di 6 sumber langganan (kebanyakan ONA China/CM yang tidak di-upload fansub).\nCoba /anime ${MONTH_NAME[p.month].toLowerCase()} ${p.year} untuk lihat sebulan penuh.`,
+  });
 }
 
 // ---------- parsing argumen ----------
@@ -564,4 +569,4 @@ async function handle(ctx) {
   return sendOngoing(ctx, Math.min(n, 10));
 }
 
-module.exports = { handle, _internals: { toks, properNouns, qof, scoreCand, resolveWatch, searchLinks, parseDateArgs, validDate, daysInMonth, WATCH_SOURCES, bsArticles, otkRows, nimegamiCards, mirainimeJson } };
+module.exports = { handle, _internals: { toks, properNouns, qof, scoreCand, resolveWatch, dayList, parseDateArgs, validDate, daysInMonth, WATCH_SOURCES, bsArticles, otkRows, nimegamiCards, mirainimeJson } };
