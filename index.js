@@ -218,19 +218,19 @@ const OWNER_MENU = `MENU OWNER
 const HELP = `MENU ELAINA BOT
 
 [1] AI dan File
-1. Kirim file (.log .txt .docx .pdf .csv .json / gambar) untuk diringkas AI
-2. Kirim file (maks 150 MB, selain APK) lalu /tanya pertanyaan dalam 3 menit
-3. /tanya pertanyaan untuk tanya soal file yang baru dikirim
+ 1. Kirim file (.log .txt .docx .pdf .csv .json / gambar) untuk diringkas AI
+ 2. Kirim file (maks 150 MB, selain APK) lalu /tanya pertanyaan dalam 3 menit
+ 3. /tanya pertanyaan untuk tanya soal file yang baru dikirim
 
 [2] Download dan Musik
-4. /dl link untuk download video (atau kirim link langsung)
-5. Kirim link YouTube + tulis "jadi mp3", atau /mp3 link
+ 4. /dl link untuk download video (atau kirim link langsung)
+ 5. Kirim link YouTube + tulis "jadi mp3", atau /mp3 link
 
 [3] Tools
-6. /kalk 12*8+5 untuk kalkulator
-7. /cuaca Jakarta untuk info cuaca terkini
-8. /tr en halo apa kabar untuk translate ke Inggris
-9. /wiki Soekarno untuk ringkasan Wikipedia
+ 6. /kalk 12*8+5 untuk kalkulator
+ 7. /cuaca Jakarta untuk info cuaca terkini
+ 8. /tr en halo apa kabar untuk translate ke Inggris
+ 9. /wiki Soekarno untuk ringkasan Wikipedia
 10. /qr teks untuk buat gambar kode QR
 11. /short link untuk perpendek URL
 12. /jam wib untuk jam dunia (wib/wita/wit/london/tokyo/mekah)
@@ -241,11 +241,12 @@ const HELP = `MENU ELAINA BOT
 15. /dadu /koin /suit batu untuk permainan
 16. /ramal /tebak /jawab /nama Budi untuk ramalan dan kuis
 17. /anime jumlah untuk rilisan ongoing (contoh: /anime 5)
-18. /anime musim tahun untuk list anime per musim + link tonton (contoh: /anime summer 2019)
-    musim: winter = Musim Dingin, spring = Musim Semi, summer = Musim Panas, fall = Musim Gugur
-19. /anime tanggal bulan tahun untuk anime yang rilis di tanggal itu (contoh: /anime 12 juni 2025)
-    /anime bulan tahun untuk sebulan penuh (contoh: /anime juli 2025), juga bisa 12/6/2025
-    AniList hanya dipakai sebagai daftar judul; cover/link/info dari situs sumber
+18. /anime musim tahun untuk list anime per musim (contoh: /anime summer 2019)
+    musim: winter, spring, summer, fall
+19. /anime tanggal bulan tahun untuk anime rilis di tanggal itu
+    contoh: /anime 12 juni 2025
+    /anime bulan tahun untuk sebulan penuh (contoh: /anime juli 2025)
+    format angka juga bisa: 12/6/2025
 20. /wallpaper 1-5 untuk wallpaper anime random (alias /wp)
 21. Kirim gambar + caption /stiker atas bawah untuk jadi stiker meme
 
