@@ -27,7 +27,8 @@ Anime:
 - /anime <musim> <tahun> — anime per musim + cover + link tonton (contoh: /anime summer 2019)
 - /anime <tanggal> <bulan> <tahun> — anime yang rilis di tanggal itu (contoh: /anime 12 juni 2025)
 - /anime <bulan> <tahun> — sebulan penuh (contoh: /anime juli 2025); format angka juga bisa (12/6/2025)
-- Link tonton dicari otomatis di 6 situs: Samehadaku, Otakudesu, Oploverz, Anoboy, Nimegami, Mirainime
+- Link tonton & cover diambil langsung dari situs sumber (Samehadaku, Oploverz, Anoboy) — tanpa AniList.
+  Arsip tanggal situs sumber tersedia mulai awal 2024.
 - /wallpaper [jumlah 1-5] — wallpaper anime random (alias: /wp)
 
 Stiker:
