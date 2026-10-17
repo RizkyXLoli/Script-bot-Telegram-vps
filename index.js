@@ -241,15 +241,17 @@ const HELP = `MENU ELAINA BOT
 15. /dadu /koin /suit batu untuk permainan
 16. /ramal /tebak /jawab /nama Budi untuk ramalan dan kuis
 17. /anime jumlah untuk rilisan ongoing (contoh: /anime 5)
-18. /anime musim tahun jumlah untuk list anime per musim + link tonton (contoh: /anime summer 2019)
+18. /anime musim tahun untuk list anime per musim + link tonton (contoh: /anime summer 2019)
     musim: winter = Musim Dingin, spring = Musim Semi, summer = Musim Panas, fall = Musim Gugur
-19. /wallpaper 1-5 untuk wallpaper anime random (alias /wp)
-20. Kirim gambar + caption /stiker atas bawah untuk jadi stiker meme
+19. /anime tanggal bulan tahun untuk anime yang rilis di tanggal itu (contoh: /anime 12 juni 2025)
+    /anime bulan tahun untuk sebulan penuh (contoh: /anime juli 2025), juga bisa 12/6/2025
+20. /wallpaper 1-5 untuk wallpaper anime random (alias /wp)
+21. Kirim gambar + caption /stiker atas bawah untuk jadi stiker meme
 
 [5] Lainnya
-21. /ping untuk cek bot hidup
-22. /id untuk lihat ID kamu
-23. /menu untuk tampilkan menu ini
+22. /ping untuk cek bot hidup
+23. /id untuk lihat ID kamu
+24. /menu untuk tampilkan menu ini
 
 Khusus owner: ketik /owner`;
 
