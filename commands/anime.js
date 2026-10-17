@@ -365,12 +365,13 @@ function mediaInfo(m, withFormat) {
   const bits = [];
   if (withFormat && m.format) bits.push(FORMAT_LABEL[m.format] || m.format);
   if (sd.day && sd.month && sd.year) bits.push(`${sd.day} ${MONTH_NAME[sd.month]} ${sd.year}`);
-  const lines = [];
-  if (bits.length) lines.push(bits.join(" · "));
-  lines.push(`${m.episodes || "?"} episode`);
-  if (m.averageScore) lines.push("skor " + m.averageScore);
-  if ((m.genres || []).length) lines.push(m.genres.slice(0, 3).join(", "));
-  return lines.join("\n");
+  bits.push(`${m.episodes || "?"} ep`);
+  if (m.averageScore) bits.push("skor " + m.averageScore);
+  return bits.join(" · ");
+}
+function genreLine(m) {
+  const g = (m.genres || []).slice(0, 3).join(", ");
+  return g ? "\n" + g : "";
 }
 
 async function sendMediaList(ctx, media, opts) {
@@ -386,10 +387,10 @@ async function sendMediaList(ctx, media, opts) {
     if (!img) continue;
     const w = watches[i];
     const s = searches[i];
-    const linkLine = w ? `\nTonton (${w.src}): ${w.link}` : s ? `\nCari: ${s[0].url}` : "";
+    const linkLine = w ? `\n▶ ${w.src}: ${w.link}` : s ? `\n🔎 ${s[0].url}` : "";
     album.push({
       img,
-      caption: `${mediaTitle(m)}\n${mediaInfo(m, opts.withFormat)}${linkLine}`.slice(0, 1000),
+      caption: `${mediaTitle(m)}\n${mediaInfo(m, opts.withFormat)}${genreLine(m)}${linkLine}`.slice(0, 1000),
       _local: false,
     });
   }
@@ -402,15 +403,30 @@ async function sendMediaList(ctx, media, opts) {
     }
   }
 
-  const lines = media.map((m, i) => {
+  const entries = media.map((m, i) => {
     const w = watches[i];
     const s = searches[i];
-    let tail = "";
-    if (w) tail = `\nTonton (${w.src}): ${w.link}`;
-    else if (s) tail = `\nBelum ada di ${WATCH_SOURCES.map((x) => x.name).join("/")}. Cari:\n${s.map((x) => `${x.src}: ${x.url}`).join("\n")}`;
-    return `${i + 1}. ${mediaTitle(m)}\n${mediaInfo(m, opts.withFormat)}\n${m.siteUrl || ""}${tail}`.trim();
-  }).join("\n\n").slice(0, 3800);
-  await reply(`${opts.header}\n\n${lines}${opts.tip || ""}`);
+    const tail = w ? `▶ ${w.src}: ${w.link}` : s ? `🔎 belum ada — cari: ${s[0].url}` : "";
+    return `${i + 1}. ${mediaTitle(m)}\n${mediaInfo(m, opts.withFormat)}${genreLine(m)}${tail ? "\n" + tail : ""}`;
+  });
+
+  // Kirim bertahap (batas keras Telegram 4096) supaya tidak ada judul yang terpotong
+  const LIMIT = 3400;
+  let buf = "";
+  let first = true;
+  const flush = async () => {
+    if (!buf.trim()) return;
+    await reply((first ? opts.header + "\n\n" : "") + buf.trimEnd());
+    first = false;
+    buf = "";
+  };
+  for (const e of entries) {
+    const add = (buf ? "\n\n" : "") + e;
+    if (buf && buf.length + add.length > LIMIT) await flush();
+    buf += (buf ? "\n\n" : "") + e;
+  }
+  if (opts.tip) buf += opts.tip;
+  await flush();
   return true;
 }
 
