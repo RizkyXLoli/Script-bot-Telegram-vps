@@ -25,8 +25,15 @@ async function startTG(onMessage, onFile) {
       ph.push(inner);
       return `\u0000B${ph.length - 1}\u0000`;
     });
+    // blok ```...``` jadi <pre> (monospace) supaya kolom menu rata di Telegram
+    const pre = [];
+    t = t.replace(/```([\s\S]*?)```/g, (_, inner) => {
+      pre.push(inner);
+      return `\u0000P${pre.length - 1}\u0000`;
+    });
     t = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     t = t.replace(/\u0000B(\d+)\u0000/g, (_, i) => `<b>${ph[Number(i)].replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</b>`);
+    t = t.replace(/\u0000P(\d+)\u0000/g, (_, i) => `<pre>${pre[Number(i)].replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`);
     return t;
   }
   function rich(toReply) {

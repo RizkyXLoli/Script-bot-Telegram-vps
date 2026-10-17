@@ -215,47 +215,49 @@ const OWNER_MENU = `MENU OWNER
 14. /mod untuk moderasi grup (filter kata, warn 3x = kick, welcome)
 15. /owner stats untuk statistik pemakaian AI`;
 
-const HELP = `MENU ELAINA BOT
+// Menu dibungkus ``` supaya tampil monospace: di Telegram jadi <pre>,
+// di WhatsApp jadi font monospace. Baris dijaga <= 42 karakter agar tidak
+// wrap di layar HP (kalau wrap, kolom nomor jadi tidak rata).
+const HELP = "```" + `MENU ELAINA BOT
+==============================
 
 [1] AI dan File
- 1. Kirim file (.log .txt .docx .pdf .csv .json / gambar) untuk diringkas AI
- 2. Kirim file (maks 150 MB, selain APK) lalu /tanya pertanyaan dalam 3 menit
- 3. /tanya pertanyaan untuk tanya soal file yang baru dikirim
+ 1. Kirim file -> diringkas AI
+ 2. File + /tanya (3 menit)
+ 3. /tanya soal file terakhir
 
 [2] Download dan Musik
- 4. /dl link untuk download video (atau kirim link langsung)
- 5. Kirim link YouTube + tulis "jadi mp3", atau /mp3 link
+ 4. /dl link  unduh video
+ 5. /mp3 link  atau "jadi mp3"
 
 [3] Tools
- 6. /kalk 12*8+5 untuk kalkulator
- 7. /cuaca Jakarta untuk info cuaca terkini
- 8. /tr en halo apa kabar untuk translate ke Inggris
- 9. /wiki Soekarno untuk ringkasan Wikipedia
-10. /qr teks untuk buat gambar kode QR
-11. /short link untuk perpendek URL
-12. /jam wib untuk jam dunia (wib/wita/wit/london/tokyo/mekah)
-13. /sholat Jakarta untuk jadwal sholat hari ini
+ 6. /kalk 12*8+5
+ 7. /cuaca Jakarta
+ 8. /tr en halo apa kabar
+ 9. /wiki Soekarno
+10. /qr teks
+11. /short link
+12. /jam wib
+13. /sholat Jakarta
 
 [4] Fun dan Anime
-14. /quote /joke /fakta /pantun untuk hiburan teks
-15. /dadu /koin /suit batu untuk permainan
-16. /ramal /tebak /jawab /nama Budi untuk ramalan dan kuis
-17. /anime jumlah untuk rilisan ongoing (contoh: /anime 5)
-18. /anime musim tahun untuk list anime per musim (contoh: /anime summer 2019)
-    musim: winter, spring, summer, fall
-19. /anime tanggal bulan tahun untuk anime rilis di tanggal itu
-    contoh: /anime 12 juni 2025
-    /anime bulan tahun untuk sebulan penuh (contoh: /anime juli 2025)
-    format angka juga bisa: 12/6/2025
-20. /wallpaper 1-5 untuk wallpaper anime random (alias /wp)
-21. Kirim gambar + caption /stiker atas bawah untuk jadi stiker meme
+14. /quote /joke /fakta /pantun
+15. /dadu /koin /suit batu
+16. /ramal /tebak /jawab /nama
+17. /anime 5  (ongoing)
+18. /anime summer 2019  (musim)
+19. /anime 12 juni 2025  (tanggal)
+    /anime juli 2025  (sebulan)
+    atau 12/6/2025
+20. /wallpaper 1-5  (alias /wp)
+21. gambar + /stiker  (meme)
 
 [5] Lainnya
-22. /ping untuk cek bot hidup
-23. /id untuk lihat ID kamu
-24. /menu untuk tampilkan menu ini
+22. /ping
+23. /id
+24. /menu
 
-Khusus owner: ketik /owner`;
+Owner: /owner` + "```";
 
 async function main() {
   const { startTG } = require("./core/tg");
