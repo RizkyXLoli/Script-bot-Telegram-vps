@@ -605,6 +605,7 @@ async function sendMediaList(ctx, media, opts) {
     const meta = metas[i];
     const cap = `${mediaTitle(m)}\n${infoLine(meta, opts.withFormat, w.src)}\n▶ ${w.src}: ${w.link}`;
     entries.push(`${i + 1}. ${cap}`);
+    if (opts.noCover) return;
     const img = meta && meta.cover;
     if (img) album.push({ img, caption: cap.slice(0, 1000), _local: false });
   });
@@ -638,6 +639,7 @@ async function sendSeason(ctx, year, season, n) {
     header: (shown, pool) => `Anime Jepang ${SEASON_LABEL[season]} ${year} — ${shown} judul${pool > shown ? ` (dari ${pool}, hanya yang ada link tonton)` : ""}:`,
     withFormat: false,
     limit: n,
+    noCover: true,
   });
 }
 
