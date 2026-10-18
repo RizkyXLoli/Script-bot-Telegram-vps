@@ -11,6 +11,7 @@ const animeCmd = require("./commands/anime");
 const wpCmd = require("./commands/wallpaper");
 const reminderCmd = require("./commands/reminder");
 const utilityCmd = require("./commands/utility");
+const sysmonCmd = require("./commands/sysmon");
 const { chatReply } = ai;
 
 const PREFIX = process.env.PREFIX || "/";
@@ -129,6 +130,8 @@ async function onMessage(ctx) {
   if (r !== null && r !== undefined) return;
   r = await utilityCmd.handle({ ...ctx, text });
   if (r !== null && r !== undefined) return;
+  r = await sysmonCmd.handle({ ...ctx, text, isOwner: isOwner(ctx) });
+  if (r !== null && r !== undefined) return;
   r = await funCmd.handle({ ...ctx, text }, store);
   if (r !== null && r !== undefined) return;
   r = await animeCmd.handle({ ...ctx, text });
@@ -245,7 +248,8 @@ const OWNER_MENU = `MENU OWNER
 17. /stats untuk statistik pemakaian + RAM + uptime
 18. /backup untuk kirim file database ke chat ini
 19. /restart untuk restart service bot
-20. /owner stats untuk statistik pemakaian AI`;
+20. /sysinfo /systop /syslog /sysdisk SysGuard VPS
+21. /owner stats untuk statistik pemakaian AI`;
 
 // Panduan pemakaian per fitur (dipanggil /panduan atau /panduan <nomor>).
 const GUIDE = {
@@ -333,7 +337,11 @@ Owner saja:
 /chats         chat terdaftar
 /stats         statistik bot
 /backup        file database
-/restart       restart bot`,
+/restart       restart bot
+/sysinfo       RAM disk load VPS
+/systop        top proses RAM
+/syslog        log bot 30 baris
+/sysdisk       folder terbesar`,
 };
 
 const GUIDE_ALL = Object.keys(GUIDE).sort().map((k) => GUIDE[k]).join("\n\n");
