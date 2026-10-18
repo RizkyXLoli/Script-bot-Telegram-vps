@@ -54,6 +54,24 @@ function open() {
       created_by TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      platform TEXT NOT NULL,
+      chat_id TEXT NOT NULL,
+      sender TEXT,
+      text TEXT NOT NULL,
+      due_at INTEGER NOT NULL,
+      attempts INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS chats (
+      platform TEXT NOT NULL,
+      chat_id TEXT NOT NULL,
+      title TEXT,
+      last_seen TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (platform, chat_id)
+    );
   `);
   return db;
 }
@@ -211,7 +229,9 @@ function listAuto() {
   autoSetup();
   return open().prepare("SELECT * FROM auto_chats WHERE sholat = 1 OR libur = 1").all();
 }
+let modReady = false;
 function modSetup() {
+  if (modReady) return;
   open().exec(`CREATE TABLE IF NOT EXISTS mod_chats (
     platform TEXT NOT NULL, chat_id TEXT NOT NULL,
     anti_badword INTEGER DEFAULT 0,
@@ -231,6 +251,9 @@ function modSetup() {
     count INTEGER DEFAULT 0,
     PRIMARY KEY (platform, chat_id, user_id)
   );`);
+  // Migrasi aditif: DB lama belum punya kolom antilink.
+  try { open().exec("ALTER TABLE mod_chats ADD COLUMN antilink INTEGER DEFAULT 0"); } catch {}
+  modReady = true;
 }
 function getMod(platform, chatId) {
   modSetup();
@@ -287,6 +310,61 @@ function getWarn(platform, chatId, userId) {
     .get(platform, chatId, userId);
   return (r && r.count) || 0;
 }
+function addReminder(userId, platform, chatId, text, dueAt, sender) {
+  const r = open().prepare(
+    "INSERT INTO reminders (user_id, platform, chat_id, sender, text, due_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(userId, platform, chatId, sender || null, text, dueAt);
+  return { id: Number(r.lastInsertRowid), dueAt };
+}
+function listReminders(userId) {
+  return open().prepare(
+    "SELECT id, text, due_at, chat_id FROM reminders WHERE user_id = ? ORDER BY due_at ASC"
+  ).all(userId);
+}
+function dueReminders(now) {
+  return open().prepare("SELECT * FROM reminders WHERE due_at <= ? ORDER BY due_at ASC").all(now || Date.now());
+}
+function bumpReminderAttempt(id) {
+  open().prepare("UPDATE reminders SET attempts = attempts + 1 WHERE id = ?").run(id);
+}
+function deleteReminder(id, userId) {
+  return open().prepare("DELETE FROM reminders WHERE id = ? AND user_id = ?").run(id, userId).changes;
+}
+function deleteReminderAny(id) {
+  return open().prepare("DELETE FROM reminders WHERE id = ?").run(id).changes;
+}
+function clearReminders(userId) {
+  return open().prepare("DELETE FROM reminders WHERE user_id = ?").run(userId).changes;
+}
+function touchChat(platform, chatId, title) {
+  if (!platform || !chatId) return;
+  open().prepare(
+    "INSERT INTO chats (platform, chat_id, title, last_seen) VALUES (?, ?, ?, datetime('now')) " +
+    "ON CONFLICT(platform, chat_id) DO UPDATE SET last_seen = datetime('now'), title = COALESCE(excluded.title, chats.title)"
+  ).run(platform, String(chatId), title || null);
+}
+function listChats(limit) {
+  return open().prepare("SELECT platform, chat_id, title, last_seen FROM chats ORDER BY last_seen DESC LIMIT ?")
+    .all(limit || 100);
+}
+function countChats() {
+  return open().prepare("SELECT COUNT(*) c FROM chats").get().c;
+}
+function statsDetail() {
+  const d = open();
+  const one = (sql) => {
+    try { return d.prepare(sql).get().c || 0; } catch { return 0; }
+  };
+  return {
+    users: one("SELECT COUNT(*) c FROM users"),
+    usersSetup: one("SELECT COUNT(*) c FROM users WHERE api_key IS NOT NULL"),
+    chats: one("SELECT COUNT(*) c FROM chats"),
+    reminders: one("SELECT COUNT(*) c FROM reminders"),
+    schedules: one("SELECT COUNT(*) c FROM schedules"),
+    pending: one("SELECT COUNT(*) c FROM pending"),
+    aiReplies: one("SELECT value c FROM stats WHERE key = 'ai_reply'"),
+  };
+}
 function getOwnerCreds(ownerIds) {
   const d = open();
   const ids = (ownerIds || []).filter(Boolean);
@@ -297,4 +375,4 @@ function getOwnerCreds(ownerIds) {
   
   return d.prepare("SELECT * FROM users WHERE api_key IS NOT NULL LIMIT 1").get() || null;
 }
-module.exports = { getUser, setUser, tmpGet, tmpSet, pushHistory, getHistory, clearHistory, setPending, getPending, clearPending, clearPendingExcept, sweepExpired, bumpStat, getStats, addSchedule, listSchedules, deleteSchedule, clearSchedules, dueSchedules, bumpSchedule, getOwnerCreds, getAuto, setAuto, listAuto, getMod, setMod, addModWord, delModWord, listModWords, clearModWords, bumpWarn, resetWarn, getWarn };
+module.exports = { getUser, setUser, tmpGet, tmpSet, pushHistory, getHistory, clearHistory, setPending, getPending, clearPending, clearPendingExcept, sweepExpired, bumpStat, getStats, addSchedule, listSchedules, deleteSchedule, clearSchedules, dueSchedules, bumpSchedule, getOwnerCreds, getAuto, setAuto, listAuto, getMod, setMod, addModWord, delModWord, listModWords, clearModWords, bumpWarn, resetWarn, getWarn, addReminder, listReminders, dueReminders, bumpReminderAttempt, deleteReminder, deleteReminderAny, clearReminders, touchChat, listChats, countChats, statsDetail };

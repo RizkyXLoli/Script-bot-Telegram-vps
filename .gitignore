@@ -2,5 +2,6 @@ node_modules/
 .env
 auth_info/
 db/*.sqlite*
+test/*.sqlite*
 *.log
 db/wa-session/

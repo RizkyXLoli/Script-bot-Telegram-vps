@@ -9,6 +9,8 @@ const toolsCmd = require("./commands/tools");
 const funCmd = require("./commands/fun");
 const animeCmd = require("./commands/anime");
 const wpCmd = require("./commands/wallpaper");
+const reminderCmd = require("./commands/reminder");
+const utilityCmd = require("./commands/utility");
 const { chatReply } = ai;
 
 const PREFIX = process.env.PREFIX || "/";
@@ -33,13 +35,17 @@ async function onMessage(ctx) {
   const text = normalize(ctx.text || "");
   const { userId, platform, reply } = ctx;
   store.getUser(userId, platform);
+  try { store.touchChat(platform, ctx.chatId, ctx.chatTitle || (ctx.isGroup ? "" : ctx.senderName)); } catch {}
   try { store.sweepExpired(); } catch {}
 
   // Filter kata berbahaya otomatis (grup). Perintah /mod tetap lolos ke handler.
-  if (ctx.isGroup && !/^\/(mod|owner|sh)(\s|$)/i.test(text)) {
+  if (ctx.isGroup && !/^\/(mod|owner|sh|kick|tendang|promote|demote|tutup|buka|tagall|admin|info|setname|warn)(\s|$)/i.test(text)) {
     try {
       const modHit = require("./commands/mod").check({ ...ctx, text, isOwner: isOwner(ctx) });
       if (modHit) {
+        if (modHit.deleteMsg && typeof ctx.deleteMessage === "function") {
+          try { await ctx.deleteMessage(); } catch {}
+        }
         if (modHit.action === "kick" && typeof ctx.kickUser === "function") {
           try { await ctx.kickUser(); }
           catch (e) { await reply(modHit.msg + "\n(kick gagal, jadikan bot admin: " + e.message + ")"); return; }
@@ -80,8 +86,15 @@ async function onMessage(ctx) {
     return reply(res);
   }
 
-  if (text === "/ping") return reply("Hidup! Bot WA+Telegram AI.");
-  if (text === "/id") return reply("ID kamu: " + userId);
+  {
+    const res = await require("./commands/owner").handle({ ...ctx, text, isOwner: isOwner(ctx) });
+    if (res !== null && res !== undefined) return;
+  }
+
+  if (/^\/(ping|id)(\s|$)/i.test(text)) {
+    if (/^\/ping(\s|$)/i.test(text)) return reply("Hidup! Bot WA+Telegram AI.");
+    return reply("ID kamu: " + userId);
+  }
   if (/^\/(help|menu)(\s|$)/i.test(text)) return reply(HELP);
   if (/^\/panduan(\s|$)/i.test(text)) {
     const arg = text.split(/\s+/)[1] || "";
@@ -106,9 +119,15 @@ async function onMessage(ctx) {
   if (r !== null && r !== undefined) return;
   r = await require("./commands/mod").handle({ ...ctx, text, isOwner: isOwner(ctx) });
   if (r !== null && r !== undefined) return;
+  r = await require("./commands/admin").handle({ ...ctx, text, isOwner: isOwner(ctx) });
+  if (r !== null && r !== undefined) return;
   r = await dlCmd.handle({ ...ctx, text });
   if (r !== null && r !== undefined) return;
   r = await toolsCmd.handle({ ...ctx, text });
+  if (r !== null && r !== undefined) return;
+  r = await reminderCmd.handle({ ...ctx, text });
+  if (r !== null && r !== undefined) return;
+  r = await utilityCmd.handle({ ...ctx, text });
   if (r !== null && r !== undefined) return;
   r = await funCmd.handle({ ...ctx, text }, store);
   if (r !== null && r !== undefined) return;
@@ -203,7 +222,7 @@ async function onFile(ctx) {
 const OWNER_MENU = `MENU OWNER
 
 [1] Kelola AI
-1. /ai setup untuk hubungkan AI (pilih provider, model, API key)
+1. /ai setup untuk hubungkan AI (provider, model, API key)
 2. /ai status untuk lihat AI yang aktif
 3. /ai ganti untuk ganti model AI
 4. /ai reset untuk hapus API key + riwayat chat
@@ -218,8 +237,15 @@ const OWNER_MENU = `MENU OWNER
 11. /auto sholat on off untuk pengingat tiap waktu sholat
 12. /auto zona wib wita wit untuk pilih zona waktu
 13. /auto libur on off untuk ucapan libur nasional
-14. /mod untuk moderasi grup (filter kata, warn 3x = kick, welcome)
-15. /owner stats untuk statistik pemakaian AI`;
+14. /mod untuk moderasi grup (filter kata, antilink, warn, welcome)
+
+[3] Kelola Bot
+15. /broadcast teks untuk kirim pesan ke semua chat
+16. /chats untuk lihat chat yang pernah memakai bot
+17. /stats untuk statistik pemakaian + RAM + uptime
+18. /backup untuk kirim file database ke chat ini
+19. /restart untuk restart service bot
+20. /owner stats untuk statistik pemakaian AI`;
 
 // Panduan pemakaian per fitur (dipanggil /panduan atau /panduan <nomor>).
 const GUIDE = {
@@ -243,12 +269,22 @@ File disimpan 3 menit, maks 150 MB, APK ditolak.`,
   3: `[3] Tools
 /kalk 12*8+5        kalkulator
 /cuaca Jakarta      cuaca terkini
-/tr en halo apa kabar   translate (en/id/jp/ar/...)
+/tr en halo apa kabar  translate
 /wiki Soekarno      ringkasan Wikipedia
 /qr teks            gambar QR
-/short <url>        perpendek URL
-/jam wib            wib/wita/wit/london/tokyo/mekah
-/sholat Jakarta     jadwal sholat hari ini`,
+/short link         perpendek URL
+/jam wib            wib/wita/wit/tokyo/mekah
+/sholat Jakarta     jadwal sholat hari ini
+/gempa              gempa terkini BMKG
+/gempa list         5 gempa terakhir
+/kurs               kurs rupiah hari ini
+/kurs 100 SGD       nominal tertentu
+/bmi 170 65         cek berat ideal
+/umur 17-08-1995    hitung umur
+/quran 2:255        ayat + terjemahan
+/quran acak         ayat random
+/ip example.com     DNS + lokasi server
+/libur              cek hari libur nasional`,
   4: `[4] Fun dan Anime
 /quote /joke /fakta /pantun    hiburan teks
 /dadu /koin /suit batu         permainan
@@ -260,7 +296,29 @@ File disimpan 3 menit, maks 150 MB, APK ditolak.`,
 /anime juli 2025       sebulan penuh
 /wallpaper 1-5         wallpaper (alias /wp)
 /stiker                kirim gambar + caption ini`,
-  5: `[5] Lainnya
+  5: `[5] Pengingat
+/ingatkan 10m minum obat
+/ingatkan 2j rapat
+/ingatkan besok 08:00 olahraga
+/ingatkan 17/10 20:00 bayar listrik
+/ingat list        daftar pengingat
+/ingat hapus 3     batalkan nomor 3
+/ingat clear       hapus semua
+Tanpa tanggal = WIB, maks 400 hari.`,
+  6: `[6] Admin Grup
+Hanya owner/admin grup. Bot harus admin.
+/kick        reply pesan target
+/promote     jadikan admin
+/demote      cabut admin
+/tutup       kunci grup
+/buka        buka grup
+/tagall pesan   tag anggota
+/admin       daftar admin
+/info        info grup
+/setname Nama Baru
+/warn        peringatan manual
+/mod antilink on   hapus link otomatis`,
+  7: `[7] Lainnya
 /ping     cek bot hidup
 /id       lihat ID kamu
 /menu     daftar perintah
@@ -270,7 +328,12 @@ Owner saja:
 /owner         menu owner
 /owner stats   statistik pemakaian AI
 /ai setup      hubungkan AI
-/sh <perintah> jalankan perintah shell`,
+/sh perintah   jalankan perintah shell
+/broadcast     pesan ke semua chat
+/chats         chat terdaftar
+/stats         statistik bot
+/backup        file database
+/restart       restart bot`,
 };
 
 const GUIDE_ALL = Object.keys(GUIDE).sort().map((k) => GUIDE[k]).join("\n\n");
@@ -299,24 +362,44 @@ const HELP = "```" + `MENU ELAINA BOT
 11. /short link
 12. /jam wib
 13. /sholat Jakarta
+14. /gempa  gempa terkini
+15. /kurs  kurs ke rupiah
+16. /bmi 170 65
+17. /umur 17-08-1995
+18. /quran 2:255
+19. /ip example.com
+20. /libur  cek hari libur
 
 [4] Fun dan Anime
-14. /quote /joke /fakta /pantun
-15. /dadu /koin /suit batu
-16. /ramal /tebak /jawab /nama
-17. /anime 5  (ongoing)
-18. /anime summer 2019  (musim)
-19. /anime 12 juni 2025  (tanggal)
+21. /quote /joke /fakta /pantun
+22. /dadu /koin /suit batu
+23. /ramal /tebak /jawab /nama
+24. /anime 5  (ongoing)
+25. /anime summer 2019  (musim)
+26. /anime 12 juni 2025  (tanggal)
     /anime juli 2025  (sebulan)
     atau 12/6/2025
-20. /wallpaper 1-5  (alias /wp)
-21. gambar + /stiker  (meme)
+27. /wallpaper 1-5  (alias /wp)
+28. gambar + /stiker  (meme)
 
-[5] Lainnya
-22. /ping
-23. /id
-24. /menu
-25. /panduan  cara pakai tiap fitur
+[5] Pengingat
+29. /ingatkan 10m minum obat
+30. /ingat list
+31. /ingat hapus 3
+
+[6] Admin Grup
+32. /kick /promote /demote
+33. /tutup /buka  kunci grup
+34. /tagall pesan
+35. /admin /info  data grup
+36. /setname Nama Baru
+37. /warn  peringatan manual
+38. /mod  filter kata & link
+
+[7] Lainnya
+39. /ping /id
+40. /menu
+41. /panduan  cara pakai
 
 Owner: /owner` + "```";
 

@@ -103,6 +103,46 @@ function safeUnlink(p) {
   try { if (p && fs.existsSync(p)) fs.unlinkSync(p); } catch {}
 }
 
+function parseRange(s) {
+  // Terima "0:30-1:30", "30-90", "1:00-", "90" (= detik mulai saja -> 30 dtk).
+  const t = String(s || "").trim();
+  const num = (x) => {
+    const p = String(x || "").trim().split(":").map(Number);
+    if (p.some((n) => !isFinite(n) || n < 0)) return null;
+    let v = 0;
+    for (const n of p) v = v * 60 + n;
+    return v;
+  };
+  let m = t.match(/^(\S+)\s*-\s*(\S*)$/);
+  if (m) {
+    const a = num(m[1]);
+    const b = m[2] ? num(m[2]) : null;
+    if (a === null || a > 36000) return null;
+    if (b !== null && (b <= a || b > 36000)) return null;
+    return { start: a, end: b };
+  }
+  m = t.match(/^(\S+)$/);
+  if (m) {
+    const a = num(m[1]);
+    if (a === null || a > 36000) return null;
+    return { start: a, end: null };
+  }
+  return null;
+}
+
+async function trimAudio(srcPath, range) {
+  if (!fs.existsSync(srcPath)) throw new Error("file audio tidak ketemu");
+  const args = ["-y", "-i", srcPath];
+  if (range && range.start) args.push("-ss", String(range.start));
+  if (range && range.end) args.push("-to", String(range.end));
+  else if (range && !range.end) args.push("-t", "30");
+  const out = srcPath.replace(/\.[a-z0-9]+$/i, "") + "-potong-" + Date.now() + ".mp3";
+  args.push("-vn", "-b:a", "192k", out);
+  await run("ffmpeg", args, 300000);
+  if (!fs.existsSync(out) || fs.statSync(out).size === 0) throw new Error("potong audio gagal");
+  return out;
+}
+
 async function videoToMp3(srcPath) {
   if (!(await haveBin("ffmpeg"))) throw new Error("ffmpeg belum terpasang di VPS");
   if (!fs.existsSync(srcPath)) throw new Error("file video tidak ketemu");
@@ -119,4 +159,4 @@ function cleanupTmp() {
   } catch {}
 }
 
-module.exports = { downloaderReady, download, videoToMp3, safeUnlink, cleanupTmp, MAX_BYTES };
+module.exports = { downloaderReady, download, videoToMp3, safeUnlink, cleanupTmp, MAX_BYTES, parseRange, trimAudio };

@@ -113,9 +113,60 @@ async function startWA(onMessage, onFile, opts) {
         const senderName = m.pushName || userId;
         const msg = m.message || {};
         const text = msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || msg.documentMessage?.caption || "";
+        const ctxInfo = msg.extendedTextMessage?.contextInfo || msg.imageMessage?.contextInfo || msg.videoMessage?.contextInfo ||
+          msg.documentMessage?.contextInfo || msg.stickerMessage?.contextInfo || msg.audioMessage?.contextInfo;
+        const quotedSender = (ctxInfo && ctxInfo.participant) || (ctxInfo && ctxInfo.remoteJid) || "";
         const ctx = {
           userId, platform: "wa", text, isGroup, senderName, senderUser: senderName.toLowerCase().replace(/\s+/g, ""),
-          chatId: jid,
+          chatId: jid, chatTitle: isGroup ? "" : senderName,
+          targetUser: quotedSender ? {
+            userId: "wa:" + String(quotedSender).replace(/@.*$/, "").split(":").pop(),
+            id: quotedSender,
+            name: String(quotedSender).replace(/@.*$/, "").split(":").pop(),
+          } : null,
+          checkAdmin: async () => {
+            const meta = await sock.groupMetadata(jid);
+            const p = (meta.participants || []).find((x) => String(x.id).split("@")[0] === String(sender).split("@")[0]);
+            return !!p && (p.admin === "admin" || p.admin === "superadmin");
+          },
+          deleteMessage: async () => { await sock.sendMessage(jid, { delete: m.key }); },
+          sendDoc: async (fp, cap) => {
+            await sock.sendMessage(jid, { document: { url: fp }, fileName: path.basename(fp), caption: (cap || "").slice(0, 1000) });
+          },
+          groupAdmin: isGroup ? {
+            kick: async (id) => { await sock.groupParticipantsUpdate(jid, [id], "remove"); },
+            promote: async (id) => { await sock.groupParticipantsUpdate(jid, [id], "promote"); },
+            demote: async (id) => { await sock.groupParticipantsUpdate(jid, [id], "demote"); },
+            mute: async () => { await sock.groupSettingUpdate(jid, "announcement"); },
+            unmute: async () => { await sock.groupSettingUpdate(jid, "not_announcement"); },
+            tagAll: async (teks) => {
+              const meta = await sock.groupMetadata(jid);
+              const ps = (meta.participants || []).map((p) => p.id);
+              const tags = ps.map((p) => "@" + String(p).replace(/@.*$/, "").split(":").pop());
+              await sock.sendMessage(jid, {
+                text: "📢 " + teks + (tags.length ? "\n\n" + tags.join(" ") : ""),
+                mentions: ps,
+              }, { quoted: { key: m.key, message: { conversation: "." } } });
+              return {};
+            },
+            listAdmins: async () => {
+              const meta = await sock.groupMetadata(jid);
+              return (meta.participants || []).filter((p) => p.admin).map((p) => ({
+                name: "@" + String(p.id).replace(/@.*$/, "").split(":").pop(),
+                id: p.id,
+              }));
+            },
+            info: async () => {
+              const meta = await sock.groupMetadata(jid);
+              return {
+                title: meta.subject, id: jid,
+                count: (meta.participants || []).length,
+                admins: (meta.participants || []).filter((p) => p.admin).length,
+                description: meta.desc,
+              };
+            },
+            setTitle: async (nama) => { await sock.groupUpdateSubject(jid, nama); },
+          } : null,
           reply: replyFor(jid, sender, senderName, m.key), replyFile: replyFileFor(jid),
           sendSticker: async (fp) => { await sock.sendMessage(jid, { sticker: { url: fp } }); },
           kickUser: async () => { await sock.groupParticipantsUpdate(jid, [sender], "remove"); },

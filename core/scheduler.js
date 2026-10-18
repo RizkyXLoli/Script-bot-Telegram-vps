@@ -105,11 +105,38 @@ async function sendDue() {
   }
 }
 
+async function sendReminders() {
+  let due = [];
+  try { due = store.dueReminders(); } catch { return; }
+  for (const r of due) {
+    if (r.platform === "tg" && !tgBot) continue; // platform belum siap: jangan hitung percobaan
+    if (r.platform === "wa" && !waSock) continue;
+    const jam = new Date(r.due_at).toLocaleString("id-ID", {
+      timeZone: "Asia/Jakarta", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+    });
+    const telat = Date.now() - r.due_at > 10 * 60000 ? "\n(jadwal semula " + jam + " WIB)" : "";
+    const teks = "⏰ Pengingat" + (r.sender ? " untuk " + r.sender : "") + "\n" + r.text + telat;
+    try {
+      await sender(r.platform, r.chat_id, teks);
+      store.deleteReminderAny(r.id);
+    } catch (e) {
+      console.error("[reminder] gagal #" + r.id + ": " + e.message);
+      store.bumpReminderAttempt(r.id);
+      if ((r.attempts || 0) + 1 >= 5) {
+        store.deleteReminderAny(r.id);
+        console.error("[reminder] #" + r.id + " dibuang setelah 5 percobaan");
+      }
+    }
+  }
+}
+
 function start() {
   setInterval(sendDue, 30 * 1000);
   setTimeout(sendDue, 10 * 1000);
+  setInterval(sendReminders, 15 * 1000);
+  setTimeout(sendReminders, 12 * 1000);
   setInterval(sendAuto, 60 * 1000);
   setTimeout(sendAuto, 20 * 1000);
 }
 
-module.exports = { registerTG, registerWA, start };
+module.exports = { registerTG, registerWA, start, sender };

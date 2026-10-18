@@ -86,6 +86,76 @@ async function startTG(onMessage, onFile) {
       await onMessage({
         userId, platform: "tg", text, isGroup, senderName, senderUser,
         chatId: String(ctx.chat.id),
+        chatTitle: ctx.chat.title || ((ctx.chat.first_name || "") + " " + (ctx.chat.last_name || "")).trim(),
+        targetUser: (() => {
+          const r = ctx.message.reply_to_message;
+          if (!r || !r.from) return null;
+          return {
+            userId: "tg:" + r.from.id,
+            id: String(r.from.id),
+            name: ((r.from.first_name || "") + " " + (r.from.last_name || "")).trim() || ("user-" + r.from.id),
+          };
+        })(),
+        checkAdmin: async () => {
+          const m = await ctx.api.getChatMember(ctx.chat.id, ctx.from.id);
+          return !!m && (m.status === "creator" || m.status === "administrator");
+        },
+        deleteMessage: async () => { await ctx.api.deleteMessage(ctx.chat.id, ctx.message.message_id); },
+        sendDoc: async (fp, cap) => {
+          await ctx.replyWithDocument(new (require("grammy").InputFile)(fp), {
+            caption: (cap || "").slice(0, 1000),
+            reply_parameters: { message_id: ctx.message.message_id },
+          });
+        },
+        groupAdmin: isGroup ? {
+          kick: async (id) => {
+            await ctx.api.banChatMember(ctx.chat.id, Number(id));
+            try { await ctx.api.unbanChatMember(ctx.chat.id, Number(id)); } catch {}
+          },
+          promote: async (id) => ctx.api.promoteChatMember(ctx.chat.id, Number(id), {
+            can_manage_chat: true, can_delete_messages: true, can_restrict_members: true,
+            can_invite_users: true, can_pin_messages: true, can_manage_video_chats: true,
+          }),
+          demote: async (id) => ctx.api.promoteChatMember(ctx.chat.id, Number(id), {
+            can_manage_chat: false, can_delete_messages: false, can_restrict_members: false,
+            can_invite_users: false, can_pin_messages: false, can_manage_video_chats: false,
+          }),
+          mute: async () => ctx.api.setChatPermissions(ctx.chat.id, { can_send_messages: false }),
+          unmute: async () => ctx.api.setChatPermissions(ctx.chat.id, {
+            can_send_messages: true, can_send_audios: true, can_send_documents: true,
+            can_send_photos: true, can_send_videos: true, can_send_video_notes: true,
+            can_send_voice_notes: true, can_send_polls: true, can_send_other_messages: true,
+            can_add_web_page_previews: true,
+          }),
+          tagAll: async (teks) => {
+            // Bot API tidak memberi daftar seluruh anggota; admin grup di-tag.
+            let admins = [];
+            try { admins = await ctx.api.getChatAdministrators(ctx.chat.id); } catch {}
+            const tags = admins
+              .filter((a) => a.user && !a.user.is_bot && a.user.username)
+              .map((a) => "@" + a.user.username);
+            const catatan = "Catatan: Telegram tidak mengizinkan tag semua anggota, jadi hanya admin yang di-tag.";
+            const body = "📢 " + teks + (tags.length ? "\n\n" + tags.join(" ") : "") + "\n\n" + catatan;
+            await ctx.reply(body.slice(0, 4000), { reply_parameters: { message_id: ctx.message.message_id } });
+            return {};
+          },
+          listAdmins: async () => {
+            const admins = await ctx.api.getChatAdministrators(ctx.chat.id);
+            return admins.filter((a) => a.user && !a.user.is_bot).map((a) => ({
+              name: ((a.user.first_name || "") + " " + (a.user.last_name || "")).trim() + (a.user.username ? " (@" + a.user.username + ")" : ""),
+              id: String(a.user.id),
+            }));
+          },
+          info: async () => {
+            const [chat, count, admins] = await Promise.all([
+              ctx.api.getChat(ctx.chat.id),
+              ctx.api.getChatMemberCount(ctx.chat.id).catch(() => null),
+              ctx.api.getChatAdministrators(ctx.chat.id).catch(() => []),
+            ]);
+            return { title: chat.title, id: String(chat.id), count, admins: admins.length, description: chat.description };
+          },
+          setTitle: async (nama) => ctx.api.setChatTitle(ctx.chat.id, nama),
+        } : null,
         reply: rich((m, extra) => ctx.reply(String(m).slice(0, 4000), { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id }, ...(extra || {}) })),
         kickUser: async () => {
           await ctx.api.banChatMember(ctx.chat.id, ctx.from.id);
