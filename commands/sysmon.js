@@ -1,8 +1,5 @@
 "use strict";
 
-// SysGuard — monitoring VPS untuk owner via chat bot.
-// Ringan: hanya /proc + df, tanpa dependency baru, tanpa proses baru.
-// Semua command owner-only (dicek via ctx.isOwner dari dispatcher).
 
 const { execFile } = require("child_process");
 const fs = require("fs");
@@ -18,7 +15,6 @@ function sh(bin, args, timeout) {
 }
 
 function readProcMem() {
-  // /proc/meminfo: kB
   try {
     const t = fs.readFileSync("/proc/meminfo", "utf8");
     const g = (k) => {
@@ -56,7 +52,6 @@ async function sysinfo(reply) {
     const row = df.trim().split("\n").slice(1).find((l) => l.trim());
     if (row) {
       const c = row.trim().split(/\s+/);
-      // Filesystem Size Used Avail Use% Mounted
       dfLine = "Disk /: " + (c[1] || "?") + " total, " + (c[2] || "?") + " pakai (" + (c[4] || "?") + "), sisa " + (c[3] || "?");
     }
   } catch (e) { dfLine = "Disk: gagal baca (" + e.message.slice(0, 80) + ")"; }
@@ -66,7 +61,6 @@ async function sysinfo(reply) {
       Math.round(((mem.total - mem.avail) / Math.max(mem.total, 1)) * 100) + "%), sisa " + fmtMB(mem.avail) +
       "\nSwap: " + fmtMB(mem.swapT - mem.swapF) + " / " + fmtMB(mem.swapT) + " pakai"
     : "RAM: gagal baca /proc/meminfo";
-  // Bot sendiri
   const pm = process.memoryUsage();
   return reply(
     "SYSGUARD VPS\n" +
@@ -78,7 +72,6 @@ async function sysinfo(reply) {
 }
 
 async function systop(reply, arg) {
-  // Ringkas top-8 proses pemakan RAM. Argumen opsional: jumlah (maks 15).
   let n = parseInt(String(arg || "").trim(), 10);
   if (!n || n < 1) n = 8;
   if (n > 15) n = 15;
@@ -95,7 +88,6 @@ async function systop(reply, arg) {
 }
 
 async function syslog(reply, arg) {
-  // Log bot 30 baris terakhir; argumen opsional: jumlah (maks 60) atau "err".
   const errOnly = /err/i.test(String(arg || ""));
   let n = parseInt(String(arg || "").trim(), 10);
   if (!n || n < 1) n = 30;
@@ -111,7 +103,6 @@ async function syslog(reply, arg) {
 }
 
 async function sysdisk(reply) {
-  // 12 direktori terbesar di /root + /tmp.
   let root, tmp;
   try { root = await sh("bash", ["-c", "du -sh /root/* 2>/dev/null | sort -rh | head -12"]); } catch (e) { root = "gagal: " + e.message.slice(0, 100); }
   try { tmp = await sh("du", ["-sh", "/tmp"]); } catch (e) { tmp = "gagal: " + e.message.slice(0, 100); }

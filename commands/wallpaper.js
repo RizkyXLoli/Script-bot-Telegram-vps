@@ -1,7 +1,5 @@
 "use strict";
 
-// /wallpaper [jumlah 1-5] — kirim wallpaper anime random (tiap request gambar beda).
-// Sumber: nekos.best (gambar dari Pixiv, tanpa key) + pic.re (wallpaper anime langsung).
 
 const https = require("https");
 const UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36";
@@ -41,7 +39,6 @@ async function handle(ctx) {
   const n = Math.min(Math.max(parseInt(text.split(/\s+/)[1]) || 3, 1), 5);
   await reply("Mencari " + n + " wallpaper anime random...");
 
-  // Ambil n gambar dari nekos.best (tiap request = hasil random baru)
   const urls = [];
   for (let i = 0; i < n; i++) {
     try {
@@ -50,7 +47,6 @@ async function handle(ctx) {
       if (r && r.url) urls.push({ img: r.url, caption: "Wallpaper anime random" + (r.artist_name ? "\nArtist: " + r.artist_name : "") + (r.source_url ? "\n" + r.source_url : "") });
     } catch {}
   }
-  // Fallback kalau API mati: pic.re kasih gambar anime langsung
   while (urls.length < n) {
     urls.push({ img: "https://pic.re/image?t=" + Date.now() + "-" + Math.random().toString(36).slice(2), caption: "Wallpaper anime random" });
   }

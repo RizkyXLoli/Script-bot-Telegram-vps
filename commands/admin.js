@@ -1,7 +1,5 @@
 "use strict";
 
-// Perintah admin grup: /kick /promote /demote /tutup /buka /tagall /admin
-// /info /setname /warn — hanya owner atau admin grup.
 
 const store = require("../db/store");
 

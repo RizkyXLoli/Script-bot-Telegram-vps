@@ -206,7 +206,6 @@ async function startWA(onMessage, onFile, opts) {
     }
   });
   try { require("./scheduler").registerWA(sock); } catch {}
-  // Welcome member baru (disetting owner via /mod)
   sock.ev.on("group-participants.update", async ({ id, participants, action }) => {
     try {
       if (action !== "add") return;

@@ -18,14 +18,12 @@ async function startTG(onMessage, onFile) {
 
   const { InlineKeyboard } = require("grammy");
   function tgFmt(s) {
-    // Convert WA-style *bold* to Telegram HTML <b>, escape the rest
     let t = String(s).slice(0, 4000);
     const ph = [];
     t = t.replace(/\*([^*\n]+)\*/g, (_, inner) => {
       ph.push(inner);
       return `\u0000B${ph.length - 1}\u0000`;
     });
-    // blok ```...``` jadi <pre> (monospace) supaya kolom menu rata di Telegram
     const pre = [];
     t = t.replace(/```([\s\S]*?)```/g, (_, inner) => {
       pre.push(inner);
@@ -46,9 +44,6 @@ async function startTG(onMessage, onFile) {
         }
         return toReply(tgFmt(t.text), { reply_markup: kb });
       }
-      // tgFmt HANYA di sini: callback pemanggil sudah memakai parse_mode HTML,
-      // jadi jangan memformat dua kali (kalau dobel, <pre>/<b> ikut ter-escape
-      // dan user melihat tag mentah).
       return toReply(tgFmt(t), {});
     };
   }
@@ -107,6 +102,11 @@ async function startTG(onMessage, onFile) {
             reply_parameters: { message_id: ctx.message.message_id },
           });
         },
+        sendSticker: async (fp) => {
+          await ctx.replyWithSticker(new (require("grammy").InputFile)(fp), {
+            reply_parameters: { message_id: ctx.message.message_id },
+          });
+        },
         groupAdmin: isGroup ? {
           kick: async (id) => {
             await ctx.api.banChatMember(ctx.chat.id, Number(id));
@@ -128,7 +128,6 @@ async function startTG(onMessage, onFile) {
             can_add_web_page_previews: true,
           }),
           tagAll: async (teks) => {
-            // Bot API tidak memberi daftar seluruh anggota; admin grup di-tag.
             let admins = [];
             try { admins = await ctx.api.getChatAdministrators(ctx.chat.id); } catch {}
             const tags = admins
@@ -291,7 +290,6 @@ async function startTG(onMessage, onFile) {
 
   bot.catch((e) => log.error("TG error: " + (e.message || e)));
 
-  // Welcome member baru TG (disetting owner via /mod)
   bot.on("message:new_chat_members", async (ctx) => {
     try {
       const store = require("../db/store");

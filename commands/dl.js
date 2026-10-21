@@ -35,7 +35,6 @@ async function doDownload(ctx, url, asMp3, rangeText) {
     } else if (asMp3) {
       await replyFile(file, "Hasil konversi MP3.");
     } else {
-      // /dl link YouTube: kirim audio saja supaya cepat + hemat kuota.
       await replyFile(file, "Hasil download (audio).");
     }
   } catch (e) {
@@ -78,7 +77,6 @@ async function handle(ctx) {
     if (!after) return reply("Contoh: /potong <link> 0:30-1:30");
     return doDownload(ctx, m[0], true, after);
   }
-  // /mp3 link + rentang opsional: /mp3 <link> 0:30-1:30
   const afterMp3 = String(text || "").slice(String(text || "").indexOf(m[0]) + m[0].length).trim();
   if (cmd === "/mp3" && afterMp3) return doDownload(ctx, m[0], true, afterMp3);
   return doDownload(ctx, m[0], cmd === "/mp3");

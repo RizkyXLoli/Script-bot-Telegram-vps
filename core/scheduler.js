@@ -109,7 +109,7 @@ async function sendReminders() {
   let due = [];
   try { due = store.dueReminders(); } catch { return; }
   for (const r of due) {
-    if (r.platform === "tg" && !tgBot) continue; // platform belum siap: jangan hitung percobaan
+    if (r.platform === "tg" && !tgBot) continue;
     if (r.platform === "wa" && !waSock) continue;
     const jam = new Date(r.due_at).toLocaleString("id-ID", {
       timeZone: "Asia/Jakarta", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",

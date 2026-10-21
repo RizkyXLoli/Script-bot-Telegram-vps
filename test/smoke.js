@@ -1,7 +1,5 @@
 "use strict";
 
-// Smoke test tanpa jaringan Telegram/WhatsApp: panggil handler dengan ctx palsu.
-// Jalankan: node test/smoke.js
 
 const path = require("path");
 const fs = require("fs");
@@ -41,7 +39,7 @@ const WIB = (y, mo, d, h, mi) => Date.UTC(y, mo - 1, d, h, mi) - 7 * 3600000;
 
 async function main() {
   console.log("\n[1] parseWhen");
-  const now = WIB(2026, 10, 17, 12, 0); // 17 Okt 2026 12:00 WIB
+  const now = WIB(2026, 10, 17, 12, 0);
   let p = reminder.parseWhen("10m beli makan", now);
   eq("10m dueAt", p.dueAt, now + 600000);
   eq("10m rest", p.rest, "beli makan");

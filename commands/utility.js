@@ -1,6 +1,5 @@
 "use strict";
 
-// Paket utilitas tambahan: /gempa /kurs /bmi /umur /quran /ip /libur
 
 const dns = require("dns").promises;
 
@@ -31,7 +30,6 @@ function todayWib() {
   return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
 }
 
-// ---------- gempa ----------
 async function gempa(arg, reply, ctx) {
   const listMode = /^(list|terkini|semua|5|10)$/i.test(arg || "");
   if (listMode) {
@@ -63,7 +61,6 @@ async function gempa(arg, reply, ctx) {
   return reply(teks);
 }
 
-// ---------- kurs ----------
 const KURS_UMUM = ["USD", "SGD", "MYR", "EUR", "SAR", "JPY", "CNY", "GBP", "AUD", "THB", "KRW", "HKD", "TWD"];
 async function kurs(arg, reply) {
   const j = await getJson("https://open.er-api.com/v6/latest/USD");
@@ -99,7 +96,6 @@ async function kurs(arg, reply) {
   );
 }
 
-// ---------- bmi ----------
 function bmi(arg, reply) {
   const nums = (String(arg || "").match(/\d+([.,]\d+)?/g) || []).map((s) => Number(s.replace(",", ".")));
   if (nums.length < 2) return reply("Pakai: /bmi tinggi_cm berat_kg\nContoh: /bmi 170 65");
@@ -124,7 +120,6 @@ function bmi(arg, reply) {
   );
 }
 
-// ---------- umur ----------
 const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
@@ -158,7 +153,6 @@ function umur(arg, reply) {
   );
 }
 
-// ---------- quran ----------
 const quranCache = new Map();
 async function surahData(nomor) {
   const hit = quranCache.get(nomor);
@@ -198,7 +192,6 @@ async function quran(arg, reply) {
   );
 }
 
-// ---------- ip / dns ----------
 async function ip(arg, reply) {
   const host = String(arg || "").trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
   if (!host) return reply("Pakai: /ip example.com atau /ip 8.8.8.8");
@@ -235,7 +228,6 @@ async function ip(arg, reply) {
   return reply("DNS " + host + "\n\n" + hasil.join("\n"));
 }
 
-// ---------- libur nasional ----------
 async function libur(arg, reply) {
   let date = String(arg || "").trim();
   if (!date) date = todayWib();

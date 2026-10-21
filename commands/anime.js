@@ -1,7 +1,5 @@
 "use strict";
 
-// /anime — rilisan ongoing (Samehadaku), per musim & per tanggal/bulan (AniList) + link tonton.
-// Sumber: samehadaku.li, otakudesu.blog, graphql.anilist.co. Tanpa dependency eksternal.
 
 const https = require("https");
 
@@ -10,7 +8,6 @@ const HOME = "https://samehadaku.li/";
 const ANILIST = "https://graphql.anilist.co";
 const OTK = "https://otakudesu.blog/";
 
-// ---------- cache sederhana (hindari request berulang) ----------
 const TTL = 10 * 60 * 1000;
 const cache = new Map();
 function cacheGet(k) {
@@ -24,7 +21,6 @@ function cacheSet(k, v) {
   cache.set(k, { t: Date.now(), v });
 }
 
-// ---------- HTTP ----------
 function fetchText(url) {
   const hit = cacheGet(url);
   if (hit !== null) return Promise.resolve(hit);
@@ -62,7 +58,6 @@ function postJson(payload) {
   });
 }
 
-// ---------- pencocokan judul + link tonton ----------
 function toks(s) {
   return String(s || "")
     .toLowerCase()
@@ -81,17 +76,12 @@ function dice(a, b) {
   return (2 * ov) / (A.size + B.size);
 }
 const SEQUEL = /^(part|season|movie|final|new|world|future|the|and|s\d|\d+(st|nd|rd|th)|ii|iii|iv|v)$/;
-// kata umum yang tidak boleh dianggap penanda judul khas
 const STOP = new Set(["season", "part", "movie", "final", "world", "anime", "special", "episode", "the", "and", "ova", "ona", "second", "third", "fourth", "story", "series", "show", "version", "subtitle", "indonesia"]);
 
-// Nama khas (kata berhuruf kapital, mis. "Mynoghra") yang muncul di dua judul
-// adalah bukti kuat kecocokan, walaupun sisanya beda bahasa.
 function properNouns(s) {
   return String(s || "").split(/[^A-Za-z0-9]+/).filter((w) => /^[A-Z]/.test(w) && w.length >= 5 && !STOP.has(w.toLowerCase())).map((w) => w.toLowerCase());
 }
 
-// Skor kecocokan judul: makin mirip makin tinggi, judul yang punya tambahan
-// "Part N / Season N / Movie" dihukum supaya season yang diminta yang menang.
 function scoreCand(queries, judul) {
   const ct = toks(judul);
   const candP = new Set(properNouns(judul));
@@ -102,14 +92,8 @@ function scoreCand(queries, judul) {
     const extra = ct.filter((t) => !q.t.includes(t));
     s -= 0.06 * extra.length + 0.08 * extra.filter((t) => SEQUEL.test(t)).length;
     if (s > best) best = s;
-    // Nama khas yang sama = bukti kuat, TAPI hanya kalau judulnya beda bahasa:
-    // tepat satu token yang sama, token itu nama khas >=6 huruf, dan kandidat
-    // tidak menambah penanda sekuel (Part/Season/Film). Tanpa syarat ini,
-    // "Dr. STONE" akan dianggap cocok dengan "Science Future Part 3".
     const shared = ct.filter((t) => q.t.includes(t));
     const sequelExtras = extra.filter((t) => SEQUEL.test(t));
-    // Batasi juga panjang kandidat: "Katachi" tidak boleh cocok dengan
-    // "Koe no Katachi" hanya karena satu token sama.
     if (shared.length === 1 && sequelExtras.length === 0 && ct.length <= q.t.length + 1 && shared[0].length >= 6 && q.p.includes(shared[0]) && candP.has(shared[0])) {
       best = Math.max(best, 0.62);
     }
@@ -121,10 +105,6 @@ function qof(s) {
   return { t: toks(s), p: properNouns(s) };
 }
 
-// ---------- sumber link tonton ----------
-// Semua sumber dibaca server-side (HTML atau JSON), tanpa JS/Turnstile.
-// Tema "article.bs" dipakai Samehadaku, Oploverz, Anoboy; Otakudesu pakai <h2><a>;
-// Nimegami (Next.js) punya kartu sendiri; Mirainime menyediakan JSON /search/live.
 function bsArticles(html, pathRe) {
   const out = [];
   const arts = html.match(/<article class="bs"[\s\S]*?<\/article>/g) || [];
@@ -195,9 +175,6 @@ async function searchSource(src, title) {
 const MIN_SCORE = 0.55;
 const STRONG = 0.8;
 
-// Cari link tonton di semua sumber, ambil kandidat dengan judul paling cocok.
-// Judul yang dicoba: romaji, english, sinonim, lalu versi 3 kata pertama.
-// Berhenti lebih awal begitu ada kandidat yang sangat cocok (hemat request).
 async function resolveWatch(m) {
   const t = m.title || {};
   const base = [...new Set([t.romaji, t.english, ...(m.synonyms || [])].filter((s) => typeof s === "string" && s.trim().length > 2))];
@@ -229,8 +206,6 @@ async function resolveWatch(m) {
   return best;
 }
 
-// Judul tanpa link tonton tidak ditampilkan sama sekali (lihat sendMediaList),
-// jadi tidak perlu lagi link pencarian sebagai pengganti.
 
 async function mapLimit(items, limit, fn) {
   const out = new Array(items.length);
@@ -245,7 +220,6 @@ async function mapLimit(items, limit, fn) {
   return out;
 }
 
-// ---------- Samehadaku: rilisan ongoing ----------
 function parseList(html, limit) {
   const main = html.split("Recommendation")[0];
   const out = [];
@@ -270,9 +244,6 @@ async function sendOngoing(ctx, n) {
   let list = parseList(html, n + 4);
   if (!list.length) { await reply("Tidak ada rilisan ongoing ditemukan."); return true; }
 
-  // Khusus anime Jepang: Samehadaku juga memuat donghua, jadi cek negara asal
-  // lewat AniList (satu request untuk semua judul). Kalau AniList tidak
-  // menjawab sama sekali, daftar asli dipakai supaya tidak kosong.
   const metas = await anilistByNames(list.map((a) => stripEpisode(a.judul)));
   const jp = list.filter((a, i) => metas[i] && metas[i].countryOfOrigin === "JP");
   if (jp.length) list = jp;
@@ -312,7 +283,6 @@ async function sendOngoing(ctx, n) {
   return true;
 }
 
-// ---------- AniList ----------
 const SEASONS = { winter: "WINTER", spring: "SPRING", summer: "SUMMER", fall: "FALL", autumn: "FALL", gugur: "FALL", panas: "SUMMER", dingin: "WINTER", semi: "SPRING" };
 const SEASON_LABEL = { WINTER: "Winter (Musim Dingin)", SPRING: "Spring (Musim Semi)", SUMMER: "Summer (Musim Panas)", FALL: "Fall (Musim Gugur)" };
 const MONTHS = {
@@ -326,8 +296,6 @@ const FORMAT_LABEL = { TV: "TV", TV_SHORT: "TV pendek", MOVIE: "Film", SPECIAL: 
 
 const MEDIA_FIELDS = "title{romaji english} synonyms episodes averageScore genres siteUrl coverImage{large} format countryOfOrigin startDate{year month day}";
 
-// Khusus anime Jepang: donghua/ONA China dan animasi Korea tidak ikut.
-// Difilter di sisi query (countryOfOrigin) sekaligus dicek ulang di klien.
 const JP_ONLY = true;
 function isJP(m) { return !JP_ONLY || m.countryOfOrigin === "JP"; }
 
@@ -337,17 +305,12 @@ async function seasonList(year, season, limit) {
   return (((data.data || {}).Page || {}).media || []).filter(isJP);
 }
 
-// AniList: filter `startDate` (FuzzyDateInt YYYYMMDD) mencocokkan tanggal PERSIS,
-// jadi satu hari tidak perlu rentang dan tidak ada hasil yang terpotong.
 async function dayList(date, limit) {
   const query = `query($d:FuzzyDateInt,$p:Int){ Page(perPage:$p){ media(startDate:$d,type:ANIME,countryOfOrigin:"JP",sort:POPULARITY_DESC,isAdult:false){ ${MEDIA_FIELDS} } } }`;
   const data = await postJson({ query, variables: { d: date, p: limit } });
   return (((data.data || {}).Page || {}).media || []).filter(isJP);
 }
 
-// `startDate_greater`/`lesser` eksklusif -> rentang sebulan dilebarkan 1 hari di
-// tiap ujung supaya tanggal 1 dan tanggal terakhir tidak hilang. Dipaginasi
-// (perPage 50, maks 4 halaman) karena satu bulan jauh lebih dari 50 judul.
 async function monthList(from, to, want) {
   const query = `query($a:FuzzyDateInt,$b:FuzzyDateInt,$pg:Int){ Page(page:$pg,perPage:50){ media(startDate_greater:$a,startDate_lesser:$b,type:ANIME,countryOfOrigin:"JP",sort:POPULARITY_DESC,isAdult:false){ ${MEDIA_FIELDS} } } }`;
   const out = [];
@@ -361,9 +324,6 @@ async function monthList(from, to, want) {
   return out;
 }
 
-// Cari beberapa judul sekaligus dalam SATU request (GraphQL alias), dipakai
-// untuk melengkapi cover hasil fallback arsip tanggal dan menyaring judul
-// ongoing yang bukan anime Jepang.
 async function anilistByNames(names) {
   const clean = names.filter((n) => n && n.trim()).slice(0, 12);
   if (!clean.length) return [];
@@ -373,9 +333,7 @@ async function anilistByNames(names) {
   };
   const parts = clean.map((n, i) => `a${i}: Media(search:${JSON.stringify(n)}, type:ANIME){ ${MEDIA_FIELDS} }`).join(" ");
   let data = null;
-  try { data = await postJson({ query: `query{ ${parts} }` }); } catch { /* jatuh ke satu-satu */ }
-  // Satu judul yang tidak ada di AniList ("Not Found.") membuat SEMUA alias
-  // bernilai null dalam satu respons, jadi kalau ada error ulangi satu per satu.
+  try { data = await postJson({ query: `query{ ${parts} }` }); } catch {  }
   if (data && !data.errors) {
     const d = data.data || {};
     return clean.map((_, i) => d["a" + i] || null);
@@ -385,9 +343,6 @@ async function anilistByNames(names) {
   return out;
 }
 
-// ---------- fallback: arsip tanggal di situs sumber ----------
-// Situs sumber berbasis WordPress, jadi /YYYY/MM/DD/ menampilkan semua posting
-// pada tanggal itu. Dipakai kalau AniList tidak punya data rilis tanggal tsb.
 const ARCHIVE_SOURCES = [
   { name: "Samehadaku", base: "https://samehadaku.li/" },
   { name: "Oploverz", base: "https://oploverz.ch/" },
@@ -408,11 +363,6 @@ function epNumber(t) {
   return m ? m[1] : null;
 }
 
-// ---------- metadata dari halaman sumber (yang ditampilkan ke user) ----------
-// AniList hanya dipakai sebagai daftar judul; semua yang tampil di chat
-// (cover, jumlah episode, musim, studio) diambil dari situs sumber.
-// Tema animestream (Samehadaku/Oploverz/Anoboy): div.info-content
-// Otakudesu: div.infozingle dengan label "Total Episode", "Tipe", "Studio".
 function parseSeriesInfo(html) {
   const cover = (html.match(/property="og:image" content="([^"]+)"/i) || [])[1] || null;
   const out = { cover, season: null, type: null, episodes: null, status: null, studio: null };
@@ -443,7 +393,6 @@ function parseSeriesInfo(html) {
     out.episodes = grab("Total Episode");
     out.status = grab("Status");
     out.studio = grab("Studio");
-    // "Tanggal Rilis: Jul 5, 2019" -> "Summer 2019" (perkiraan dari bulannya)
     const rilis = grab("Tanggal Rilis");
     const mm = rilis && rilis.match(/([A-Za-z]{3})[a-z]*\s+\d{1,2},?\s+(\d{4})/);
     if (mm) {
@@ -464,15 +413,11 @@ async function sourceMeta(link) {
   } catch { return null; }
 }
 
-// og:image kadang bukan poster (logo situs, gambar default). Yang seperti itu
-// jangan dipakai sebagai cover di album.
 function isRealPoster(url) {
   if (!url || !/^https?:/i.test(url)) return false;
   return !/og-[a-z]+\.(png|jpe?g)$|logo|placeholder|noimg|default[-_]?(image|cover)|favicon/i.test(url);
 }
 
-// Cari poster + info dari situs sumber lain (Samehadaku paling lengkap) untuk
-// judul yang halaman sumbernya tidak menyediakan poster/info.
 async function otherSourceMeta(m, opts) {
   const { needCover = false, needInfo = false, exclude = null } = opts || {};
   const t = m.title || {};
@@ -492,15 +437,12 @@ async function otherSourceMeta(m, opts) {
       if (!meta) continue;
       const hasInfo = !!(meta.episodes || meta.season || meta.studio);
       const hasCover = isRealPoster(meta.cover);
-      // hanya terima kalau memenuhi kebutuhan yang diminta
       if ((needInfo && hasInfo) || (needCover && hasCover && !needInfo)) return meta;
     }
   }
   return null;
 }
 
-// Ambil semua posting di tanggal itu dari 3 situs, buang judul episode dan
-// gabungkan per judul seri. Urut: judul yang muncul di lebih banyak sumber dulu.
 async function archiveDay(y, m, d) {
   const pad = (n) => String(n).padStart(2, "0");
   const dayPath = `${y}/${pad(m)}/${pad(d)}/`;
@@ -535,8 +477,6 @@ async function archiveDay(y, m, d) {
   return [...map.values()].sort((a, b) => b.srcs.length - a.srcs.length);
 }
 
-// Kirim daftar hasil arsip tanggal: judul + cover dari halaman sumber itu
-// sendiri (AniList tidak dipakai/ditampilkan di jalur ini).
 async function sendArchiveList(ctx, items, label, limit) {
   const { reply } = ctx;
   const picked = items.slice(0, Math.min(limit, 10));
@@ -563,7 +503,7 @@ async function sendArchiveList(ctx, items, label, limit) {
       if (typeof ctx.sendAlbum === "function") await ctx.sendAlbum(album);
       else throw new Error("no-album");
     } catch {
-      for (const a of album) { try { await ctx.replyFile(a.img, a.caption); } catch { /* lanjut */ } }
+      for (const a of album) { try { await ctx.replyFile(a.img, a.caption); } catch {  } }
     }
   }
   const header = `AniList tidak mencatat anime Jepang yang rilis ${label}.\nIni yang di-upload sumber di tanggal itu — ${entries.length} judul:`;
@@ -571,12 +511,9 @@ async function sendArchiveList(ctx, items, label, limit) {
   return true;
 }
 
-// ---------- tampilan daftar ----------
 function mediaTitle(m) {
   return String((m.title && (m.title.english || m.title.romaji)) || "?").trim();
 }
-// Kirim daftar panjang per potongan (batas keras Telegram 4096) tanpa memotong
-// entri di tengah; header hanya di pesan pertama, tip di pesan terakhir.
 async function sendChunked(reply, header, entries, tip) {
   const LIMIT = 3400;
   let buf = "";
@@ -600,10 +537,6 @@ async function sendMediaList(ctx, media, opts) {
   const { reply } = ctx;
   const limit = Math.min(opts.limit || 5, 10);
 
-  // Hanya judul yang benar-benar punya halaman tonton yang ditampilkan.
-  // Tanpa link tonton, judulnya tidak dimasukkan ke chat (bukan cuma linknya).
-  // Dicari bertahap 3 judul sekaligus dan berhenti begitu kuota terpenuhi,
-  // supaya tidak menembak semua kandidat kalau 5 pertama sudah ada linknya.
   const pairs = [];
   for (let i = 0; i < media.length && pairs.length < limit; i += 3) {
     const batch = media.slice(i, i + 3);
@@ -618,13 +551,8 @@ async function sendMediaList(ctx, media, opts) {
     return true;
   }
 
-  // Ambil detail dari HALAMAN SUMBER untuk tiap judul yang lolos (cover, jumlah
-  // episode, musim, studio). AniList tidak ditampilkan sama sekali.
   const metas = await mapLimit(pairs, 4, ({ w }) => sourceMeta(w.link));
 
-  // Kalau halaman sumber tidak punya poster atau info lengkap (Nimegami /
-  // Mirainime sering begitu), lengkapi dari situs sumber lain supaya album
-  // tidak bolong dan baris info tidak kosong.
   const alts = await mapLimit(pairs, 4, async ({ m, w }, i) => {
     const own = metas[i] || {};
     const needCover = !isRealPoster(own.cover);
@@ -647,8 +575,6 @@ async function sendMediaList(ctx, media, opts) {
     if (eps) bits.push(`${eps} ep`);
     if (season) bits.push(season);
     if (studio) bits.push(studio);
-    // tidak ada info dari halaman sumber -> baris info dikosongkan (bukan diisi
-    // angka AniList); nama sumber sudah tampil di baris link
     return bits.join(" · ");
   };
 
@@ -668,7 +594,7 @@ async function sendMediaList(ctx, media, opts) {
     else throw new Error("no-album");
   } catch {
     for (const it of album.slice(0, 5)) {
-      try { await ctx.replyFile(it.img, it.caption); } catch { /* lanjut */ }
+      try { await ctx.replyFile(it.img, it.caption); } catch {  }
     }
   }
 
@@ -677,14 +603,11 @@ async function sendMediaList(ctx, media, opts) {
   return true;
 }
 
-// ---------- mode: musim ----------
 async function sendSeason(ctx, year, season, n) {
   await ctx.reply(`Mencari anime ${SEASON_LABEL[season]} ${year}...`);
   let media;
   try { media = await seasonList(year, season, Math.min(n * 3 + 5, 50)); }
   catch (e) { await ctx.reply("Gagal ambil data musim: " + e.message); return true; }
-  // film / special tidak dihitung sebagai daftar serial musim; ambil ekstra
-  // supaya jumlah yang diminta tetap terpenuhi setelah difilter
   media = media.filter((m) => !["MUSIC", "MOVIE", "SPECIAL"].includes(m.format)).slice(0, Math.min(n * 3, 30));
   if (!media.length) { await ctx.reply(`Tidak ada anime ${SEASON_LABEL[season]} ${year} ditemukan.`); return true; }
   await ctx.reply(`Mencari link tonton untuk ${media.length} anime...`);
@@ -695,7 +618,6 @@ async function sendSeason(ctx, year, season, n) {
   });
 }
 
-// ---------- mode: tanggal / bulan ----------
 function ymd(y, m, d) { return y * 10000 + m * 100 + d; }
 function daysInMonth(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
 function shiftDay(y, m, d, delta) {
@@ -712,14 +634,12 @@ async function sendRange(ctx, p, n, nGiven) {
   let media, total;
   try {
     if (isMonth) {
-      // ujung rentang dilebarkan 1 hari karena greater/lesser eksklusif
       media = await monthList(shiftDay(p.year, p.month, 1, -1), shiftDay(p.year, p.month, daysInMonth(p.year, p.month), 1), 200);
     } else {
       media = await dayList(ymd(p.year, p.month, p.day), 50);
     }
   } catch (e) { await ctx.reply("Gagal ambil data tanggal: " + e.message); return true; }
 
-  // saring ulang di sisi bot: tanggal harus persis, musik dibuang, anime Jepang saja
   media = media.filter((m) => {
     const sd = m.startDate || {};
     if (sd.year !== p.year || sd.month !== p.month) return false;
@@ -727,14 +647,10 @@ async function sendRange(ctx, p, n, nGiven) {
     if (m.format === "MUSIC") return false;
     return isJP(m);
   });
-  // bulan: tetap urut popularitas (seperti mode musim), tanggal tetap tampil per judul
   total = media.length;
-  // kandidat yang dicek: sejumlah mungkin (maks 15), lalu diambil yang punya link
   media = media.slice(0, Math.min(total, 15));
   const want = nGiven || 5;
 
-  // AniList tidak punya data rilis Jepang untuk tanggal itu -> langsung ambil
-  // arsip tanggal di situs sumber (WordPress /YYYY/MM/DD/).
   const archiveFallback = isMonth ? null : async () => {
     await ctx.reply(`AniList kosong untuk ${label} — cek arsip tanggal di situs sumber...`);
     let arch = [];
@@ -762,7 +678,6 @@ async function sendRange(ctx, p, n, nGiven) {
   });
 }
 
-// ---------- parsing argumen ----------
 function parseDateArgs(args) {
   const low = args.map((a) => a.toLowerCase());
   for (const a of low) {
@@ -812,8 +727,6 @@ async function handle(ctx) {
   const d = parseDateArgs(args);
   if (d) {
     if (!validDate(d)) { await ctx.reply("Tanggal tidak valid. Contoh: /anime 12 juni 2025"); return true; }
-    // angka 1-2 digit yang sama dengan tanggal bukan "jumlah" — hanya angka
-    // tambahan (mis. /anime 12 juni 2025 5) yang dianggap permintaan jumlah
     let nGiven = false, nn = 8;
     for (const a of args) {
       if (!/^\d{1,2}$/.test(a)) continue;

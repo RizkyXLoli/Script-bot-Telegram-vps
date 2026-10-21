@@ -2,7 +2,6 @@
 
 const store = require("../db/store");
 
-// /mod — khusus owner, dijalankan dari grup target (WA). Di TG grup hanya filter+warn (tanpa kick).
 async function handle(ctx) {
   const { text, reply, platform, chatId } = ctx;
   const m0 = String(text || "").trim().match(/^\/[^@\s]+/);
@@ -79,8 +78,6 @@ async function handle(ctx) {
   return reply("Pakai /mod untuk daftar perintah.");
 }
 
-// Cek tiap pesan grup. Return {action:'warn'|'kick', deleteMsg, ...} atau null.
-// Eksekusi kick/hapus dilakukan caller (core/wa.js, core/tg.js) karena butuh akses socket/bot.
 const LINK_RE = /(https?:\/\/\S+|www\.[a-z0-9-]+\.[a-z]{2,}|\b[a-z0-9-]+\.(com|net|id|org|me|xyz|link|site|online|store|app|gg|tv|my)\b)/i;
 
 function check(ctx) {
@@ -97,7 +94,6 @@ function check(ctx) {
     if (words.length) {
       const t = " " + String(text || "").toLowerCase() + " ";
       hit = words.find((w) => w && t.includes(w.toLowerCase())) || null;
-      // Pesan kata kasar ikut dihapus biar tidak terlihat anggota lain.
       if (hit) deleteMsg = true;
     }
   }

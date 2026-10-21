@@ -12,7 +12,6 @@ function safeCalc(expr) {
   if (typeof v !== "number" || !isFinite(v)) throw new Error("hasil tidak valid");
   return Math.round(v*1e8)/1e8;
 }
-// /ringkas <link artikel> — ambil teks halaman lalu rangkum 5 poin via AI owner.
 async function ringkas(ctx, arg) {
   const { reply } = ctx;
   const m = String(arg || "").match(/https?:\/\/\S+/i);

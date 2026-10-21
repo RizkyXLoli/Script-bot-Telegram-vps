@@ -104,7 +104,6 @@ function safeUnlink(p) {
 }
 
 function parseRange(s) {
-  // Terima "0:30-1:30", "30-90", "1:00-", "90" (= detik mulai saja -> 30 dtk).
   const t = String(s || "").trim();
   const num = (x) => {
     const p = String(x || "").trim().split(":").map(Number);

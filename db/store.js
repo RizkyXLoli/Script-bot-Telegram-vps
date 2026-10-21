@@ -251,7 +251,6 @@ function modSetup() {
     count INTEGER DEFAULT 0,
     PRIMARY KEY (platform, chat_id, user_id)
   );`);
-  // Migrasi aditif: DB lama belum punya kolom antilink.
   try { open().exec("ALTER TABLE mod_chats ADD COLUMN antilink INTEGER DEFAULT 0"); } catch {}
   modReady = true;
 }

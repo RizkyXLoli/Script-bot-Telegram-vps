@@ -1,7 +1,5 @@
 "use strict";
 
-// Pengingat pribadi: /ingatkan 10m minum obat, /ingat list, /ingat hapus 3
-// Waktu absolut selalu ditafsirkan sebagai WIB (Asia/Jakarta).
 
 const store = require("../db/store");
 
@@ -40,7 +38,6 @@ function humanLeft(ms) {
   return out.join(" ");
 }
 
-// Mengembalikan { dueAt, rest } atau { error }.
 function parseWhen(raw, now) {
   const t = String(raw || "").trim();
   if (!t) return { error: "Waktu belum diisi. Contoh: /ingatkan 10m minum obat" };

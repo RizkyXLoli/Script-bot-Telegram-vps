@@ -1,6 +1,5 @@
 "use strict";
 
-// Perintah owner: /broadcast /chats /stats /backup /restart
 
 const path = require("path");
 
@@ -85,8 +84,6 @@ async function handle(ctx) {
 
   if (cmd === "/restart") {
     await reply("🔄 Restart bot... (kembali online dalam beberapa detik)");
-    // Restart=always aktif: cukup bunuh diri, systemd menyalakan ulang —
-    // tanpa jendela dua instance (pemicu error Conflict getUpdates).
     setTimeout(() => process.exit(0), 1000);
     return "sent";
   }

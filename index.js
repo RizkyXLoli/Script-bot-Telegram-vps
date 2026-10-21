@@ -27,7 +27,7 @@ function isOwner(ctx) {
 
 function normalize(text) {
   let t = (text || "").trim();
-  t = t.replace(/^([!./]\w+)@\S+/i, "$1"); // /menu@namabot -> /menu
+  t = t.replace(/^([!./]\w+)@\S+/i, "$1");
   if (/^[!./]/.test(t)) return "/" + t.slice(1);
   return t;
 }
@@ -39,7 +39,6 @@ async function onMessage(ctx) {
   try { store.touchChat(platform, ctx.chatId, ctx.chatTitle || (ctx.isGroup ? "" : ctx.senderName)); } catch {}
   try { store.sweepExpired(); } catch {}
 
-  // Filter kata berbahaya otomatis (grup). Perintah /mod tetap lolos ke handler.
   if (ctx.isGroup && !/^\/(mod|owner|sh|kick|tendang|promote|demote|tutup|buka|tagall|admin|info|setname|warn)(\s|$)/i.test(text)) {
     try {
       const modHit = require("./commands/mod").check({ ...ctx, text, isOwner: isOwner(ctx) });
@@ -251,7 +250,6 @@ const OWNER_MENU = `MENU OWNER
 20. /sysinfo /systop /syslog /sysdisk SysGuard VPS
 21. /owner stats untuk statistik pemakaian AI`;
 
-// Panduan pemakaian per fitur (dipanggil /panduan atau /panduan <nomor>).
 const GUIDE = {
   1: `[1] AI dan File
 Kirim file langsung ke chat (tanpa perintah):
@@ -299,6 +297,8 @@ File disimpan 3 menit, maks 150 MB, APK ditolak.`,
 /anime 12 juni 2025    rilis di tanggal itu
 /anime juli 2025       sebulan penuh
 /wallpaper 1-5         wallpaper (alias /wp)
+/smeme halo sayang     stiker teks
+/svgif halo sayang     stiker teks bergerak
 /stiker                kirim gambar + caption ini`,
   5: `[5] Pengingat
 /ingatkan 10m minum obat
@@ -346,9 +346,6 @@ Owner saja:
 
 const GUIDE_ALL = Object.keys(GUIDE).sort().map((k) => GUIDE[k]).join("\n\n");
 
-// Menu dibungkus ``` supaya tampil monospace: di Telegram jadi <pre>,
-// di WhatsApp jadi font monospace. Baris dijaga <= 42 karakter agar tidak
-// wrap di layar HP (kalau wrap, kolom nomor jadi tidak rata).
 const HELP = "```" + `MENU ELAINA BOT
 ==============================
 
@@ -388,26 +385,28 @@ const HELP = "```" + `MENU ELAINA BOT
     /anime juli 2025  (sebulan)
     atau 12/6/2025
 27. /wallpaper 1-5  (alias /wp)
-28. gambar + /stiker  (meme)
+28. /smeme halo sayang  (stiker teks)
+29. /svgif halo sayang  (stiker teks bergerak)
+    gambar + /stiker  (meme)
 
 [5] Pengingat
-29. /ingatkan 10m minum obat
-30. /ingat list
-31. /ingat hapus 3
+30. /ingatkan 10m minum obat
+31. /ingat list
+32. /ingat hapus 3
 
 [6] Admin Grup
-32. /kick /promote /demote
-33. /tutup /buka  kunci grup
-34. /tagall pesan
-35. /admin /info  data grup
-36. /setname Nama Baru
-37. /warn  peringatan manual
-38. /mod  filter kata & link
+33. /kick /promote /demote
+34. /tutup /buka  kunci grup
+35. /tagall pesan
+36. /admin /info  data grup
+37. /setname Nama Baru
+38. /warn  peringatan manual
+39. /mod  filter kata & link
 
 [7] Lainnya
-39. /ping /id
-40. /menu
-41. /panduan  cara pakai
+40. /ping /id
+41. /menu
+42. /panduan  cara pakai
 
 Owner: /owner` + "```";
 
